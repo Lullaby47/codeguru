@@ -60,11 +60,21 @@ def signup_submit(
         data={"email": email, "username": username, "password": password},
     )
 
-    # ✅ Accept any 2xx (200, 201, etc.)
+    print("[WEB] /signup -> /auth/signup status:", r.status_code, flush=True)
+    try:
+        print("[WEB] /auth/signup body:", r.text[:300], flush=True)
+    except Exception:
+        pass
+
     if not (200 <= r.status_code < 300):
+        detail = "Signup failed"
+        try:
+            j = r.json()
+            detail = j.get("detail") or j.get("message") or detail
+        except Exception:
+            pass
         return templates.TemplateResponse(
-            "signup.html",
-            {"request": request, "error": _extract_error(r, "Signup failed")},
+            "signup.html", {"request": request, "error": detail}
         )
 
     return RedirectResponse(url="/login", status_code=303)
