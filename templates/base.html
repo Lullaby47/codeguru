@@ -112,9 +112,14 @@
 </div>
 {% endif %}
 {% if not hide_nav %}
-<!-- CodeGuru title below nav on mobile -->
+<!-- Row 2: CODEGURU title below nav on mobile -->
 <div class="nav-title-mobile">
-    <!-- User Profile Icon (mobile only - shown in second row) -->
+    <a href="/dashboard">
+        <div class="codeguru-title-mobile">CODEGURU</div>
+    </a>
+</div>
+<!-- Row 3: User profile pill below title on mobile -->
+<div class="nav-user-mobile">
     <div class="user-profile-icon-mobile" id="userProfileIconMobile" title="Your Profile" 
          data-user-level="{% if user %}{{ user.level }}{% else %}1{% endif %}"
          data-username="{% if user %}{{ user.username }}{% else %}Guest{% endif %}"
@@ -123,9 +128,6 @@
          data-verified="{% if user %}{{ 'Yes' if user.is_verified else 'No' }}{% else %}No{% endif %}">
         <div class="profile-level">{% if user %}{{ user.username }}{% else %}Guest{% endif %}</div>
     </div>
-    <a href="/dashboard">
-        <div class="codeguru-title-mobile">CODEGURU</div>
-    </a>
 </div>
 {% endif %}
 

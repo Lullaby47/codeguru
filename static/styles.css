@@ -246,26 +246,35 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
         display: flex;
         align-items: center;
         justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
     }
 
     .logout-icon {
         font-size: 18px !important;
         filter: none;
         color: #ff6666 !important;
-        background: rgba(255, 102, 102, 0.1);
-        border: 1px solid rgba(255, 102, 102, 0.3);
-        border-radius: 6px;
-        padding: 6px 8px;
-        min-width: 36px;
-        min-height: 36px;
+        background: rgba(255, 102, 102, 0.15);
+        border: 1.5px solid rgba(255, 102, 102, 0.4);
+        border-radius: 50%;
+        padding: 0;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .logout-link:hover .logout-icon,
     .logout-link:active .logout-icon {
-        background: rgba(255, 102, 102, 0.2);
-        border-color: rgba(255, 102, 102, 0.5);
+        background: rgba(255, 102, 102, 0.25);
+        border-color: rgba(255, 102, 102, 0.6);
         transform: scale(1.05);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -312,10 +321,39 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     align-items: center;
 }
 
-/* Hide user profile icon in nav-left on mobile (shown in nav-title-mobile instead) */
+/* Mobile nav structure: 3 rows */
 @media (max-width: 719px) {
+    /* Hide user profile icon in nav-left on mobile (shown in nav-user-mobile instead) */
     .user-profile-icon {
         display: none;
+    }
+
+    /* Row 1: Make nav icon-only, compact */
+    .nav {
+        height: 56px;
+        padding: 0 8px;
+        gap: 4px;
+    }
+
+    .nav-left {
+        gap: 4px;
+    }
+
+    .nav-right {
+        gap: 4px;
+    }
+
+    /* Hide nav-quote on mobile */
+    .nav-quote {
+        display: none;
+    }
+
+    /* Ensure nav items are compact */
+    .nav-item {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 2px;
+        font-size: 16px;
     }
 }
 
@@ -380,7 +418,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   NAV TITLE (Mobile - Below Nav Bar)
+   NAV TITLE (Mobile - Row 2: CODEGURU Only)
    ============================================ */
 .nav-title-mobile {
     position: fixed;
@@ -390,38 +428,12 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     background: rgba(30, 30, 30, 0.95);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
-    padding: 8px 16px;
+    padding: 10px 16px;
     z-index: 999;
     display: flex;
     align-items: center;
-    gap: 12px;
-}
-
-.user-profile-icon-mobile {
-    cursor: pointer;
-    padding: 6px 10px;
-    background: rgba(0, 255, 102, 0.1);
-    border: 1px solid rgba(0, 255, 102, 0.3);
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    user-select: none;
-    min-height: 32px;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.user-profile-icon-mobile:hover {
-    background: rgba(0, 255, 102, 0.2);
-    border-color: rgba(0, 255, 102, 0.5);
-    transform: scale(1.05);
-}
-
-.user-profile-icon-mobile .profile-level {
-    font-size: 11px;
-    font-weight: bold;
-    color: var(--green);
-    letter-spacing: 0.5px;
+    justify-content: center;
+    min-height: 44px;
 }
 
 .codeguru-title-mobile {
@@ -432,16 +444,59 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     text-align: center;
     animation: blinkIdle 1.3s infinite;
     cursor: pointer;
-    flex: 1;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: fit-content;
+    margin: 0;
 }
 
 .codeguru-title-mobile:hover {
     animation: none;
     opacity: 1;
+}
+
+/* ============================================
+   NAV USER (Mobile - Row 3: Username Pill)
+   ============================================ */
+.nav-user-mobile {
+    position: fixed;
+    top: 110px; /* 56px nav + 44px title row + 10px spacing */
+    left: 0;
+    right: 0;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    z-index: 998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+}
+
+.user-profile-icon-mobile {
+    cursor: pointer;
+    padding: 8px 14px;
+    background: rgba(0, 255, 102, 0.1);
+    border: 1px solid rgba(0, 255, 102, 0.3);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    user-select: none;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-profile-icon-mobile:hover {
+    background: rgba(0, 255, 102, 0.2);
+    border-color: rgba(0, 255, 102, 0.5);
+    transform: scale(1.05);
+}
+
+.user-profile-icon-mobile .profile-level {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--green);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 /* ============================================
@@ -456,7 +511,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 .with-nav {
-    padding-top: 96px; /* 56px nav + 40px title */
+    padding-top: 150px; /* 56px nav + 44px title + 50px user row */
 }
 
 /* ============================================
@@ -1158,8 +1213,16 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
         display: none; /* Hide mobile title on desktop */
     }
 
+    .nav-user-mobile {
+        display: none; /* Hide mobile user row on desktop */
+    }
+
     .user-profile-icon {
         display: flex; /* Show user profile icon in nav-left on desktop */
+    }
+
+    .with-nav {
+        padding-top: 80px; /* Back to normal on desktop */
     }
 
     .nav-right {
