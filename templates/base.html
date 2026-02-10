@@ -6,19 +6,30 @@
     <title>{% block title %}CodeGuru{% endblock %}</title>
     <link rel="stylesheet" href="/static/styles.css">
 
+    {# Get base URL for Open Graph - prefer PUBLIC_BASE_URL (Railway public domain) over request.base_url (internal) #}
+    {% if public_base_url %}
+        {% set og_base_url = public_base_url %}
+        {% set og_full_url = public_base_url ~ request.url.path %}
+        {% set og_image_url = public_base_url ~ '/static/share.png' %}
+    {% else %}
+        {% set og_base_url = request.base_url %}
+        {% set og_full_url = request.url %}
+        {% set og_image_url = request.base_url ~ 'static/share.png' %}
+    {% endif %}
+
     {# Open Graph / Facebook #}
     <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:url" content="{{ og_full_url }}">
     <meta property="og:title" content="CodeGuru — Secure Portal">
     <meta property="og:description" content="Official CodeGuru login and dashboard. Secure access to your account.">
-    <meta property="og:image" content="{{ request.base_url }}static/share.png">
+    <meta property="og:image" content="{{ og_image_url }}">
 
     {# Twitter #}
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="{{ request.url }}">
+    <meta name="twitter:url" content="{{ og_full_url }}">
     <meta name="twitter:title" content="CodeGuru — Secure Portal">
     <meta name="twitter:description" content="Official CodeGuru login and dashboard. Secure access to your account.">
-    <meta name="twitter:image" content="{{ request.base_url }}static/share.png">
+    <meta name="twitter:image" content="{{ og_image_url }}">
 
     {# Additional SEO #}
     <meta name="description" content="Official CodeGuru login and dashboard. Secure access to your account.">

@@ -56,6 +56,7 @@ def validate_templates():
     mock_context = {
         "request": MockRequest(),
         "user": None,
+        "public_base_url": "",  # Mock public_base_url global
     }
 
     for template_file in sorted(template_files):

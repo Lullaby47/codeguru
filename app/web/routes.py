@@ -33,6 +33,20 @@ def _api_base(request: Request) -> str:
 
 
 templates = Jinja2Templates(directory="templates")
+
+# Inject PUBLIC_BASE_URL globally into all templates for Open Graph previews
+# This ensures og:image and og:url use the public domain, not internal Railway URLs
+def get_public_base_url() -> str:
+    """Get public base URL from env var, or return empty string to use request.base_url"""
+    public_url = os.getenv("PUBLIC_BASE_URL", "").strip()
+    if public_url:
+        # Ensure it ends with / for consistency
+        return public_url.rstrip("/")
+    return ""
+
+# Add to template globals so it's available in all templates
+templates.env.globals["public_base_url"] = get_public_base_url()
+
 router = APIRouter(tags=["web"])
 
 
