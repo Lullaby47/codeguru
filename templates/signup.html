@@ -1,135 +1,66 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="
-    min-height: 70vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-">
+<div class="auth-container">
 
-    <div style="
-        width: 380px;
-        background: rgba(15,15,15,0.9);
-        border: 1px solid #222;
-        border-radius: 14px;
-        padding: 32px;
-        box-shadow: 0 0 40px rgba(0,0,0,0.6);
-    ">
+    <div class="auth-card">
 
-        <h2 style="
-            text-align: center;
-            margin-bottom: 6px;
-            letter-spacing: 1px;
-        ">
-            Begin your journey
-        </h2>
+        <h2 class="auth-title">Begin your journey</h2>
 
-        <p style="
-            text-align: center;
-            font-size: 13px;
-            opacity: 0.6;
-            margin-bottom: 24px;
-        ">
-            One step at a time. No pressure.
-        </p>
+        <p class="auth-subtitle">One step at a time. No pressure.</p>
 
         {% if error %}
-            <div style="
-                background: #842029;
-                color: #ffb3b3;
-                padding: 10px;
-                border-radius: 8px;
-                font-size: 13px;
-                margin-bottom: 14px;
-            ">
+            <div class="alert alert-error">
                 {{ error }}
             </div>
         {% endif %}
 
-        <!-- IMPORTANT: send the form to the auth endpoint -->
         <form method="post" action="/signup">
+            <div class="form-group">
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    required
+                    class="form-input"
+                    autocomplete="email"
+                >
+            </div>
 
-            <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                required
-                style="
-                    width: 100%;
-                    padding: 10px;
-                    margin-bottom: 12px;
-                    background: #000;
-                    border: 1px solid #333;
-                    border-radius: 8px;
-                    color: white;
-                "
-            >
+            <div class="form-group">
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="Username"
+                    required
+                    class="form-input"
+                    autocomplete="username"
+                >
+            </div>
 
-            <input
-                type="text"
-                name="username"
-                placeholder="Username"
-                required
-                style="
-                    width: 100%;
-                    padding: 10px;
-                    margin-bottom: 12px;
-                    background: #000;
-                    border: 1px solid #333;
-                    border-radius: 8px;
-                    color: white;
-                "
-            >
+            <div class="form-group">
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    required
+                    class="form-input"
+                    autocomplete="new-password"
+                >
+            </div>
 
-            <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                required
-                style="
-                    width: 100%;
-                    padding: 10px;
-                    margin-bottom: 18px;
-                    background: #000;
-                    border: 1px solid #333;
-                    border-radius: 8px;
-                    color: white;
-                "
-            >
-
-            <button
-                type="submit"
-                style="
-                    width: 100%;
-                    padding: 10px;
-                    background: white;
-                    color: black;
-                    border: none;
-                    border-radius: 8px;
-                    font-weight: bold;
-                    cursor: pointer;
-                "
-            >
+            <button type="submit" class="form-button">
                 Start
             </button>
 
         </form>
 
-        <div style="
-            text-align: center;
-            margin-top: 16px;
-            font-size: 13px;
-            opacity: 0.7;
-        ">
+        <div class="auth-footer">
             Already walking the path?
-            <a href="/login" style="color: white; text-decoration: underline;">
-                Return
-            </a>
+            <a href="/login">Return</a>
         </div>
 
     </div>
 
 </div>
 {% endblock %}
-

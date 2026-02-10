@@ -1,7 +1,9 @@
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from app.web.debug_routes import router as debug_router
 
 from app.db.base import Base, engine
@@ -14,6 +16,11 @@ from app.submissions.routes import router as submission_router  # 🔥 ADD THIS
 
 
 app = FastAPI(title="CodeGuru", version="0.1.0")
+
+# Mount static files directory
+static_dir = Path(__file__).parent.parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # Only expose debug routes (including diagnostics) when explicitly enabled.
 if os.getenv("ENABLE_DEBUG_ROUTES", "0") == "1":

@@ -2,151 +2,50 @@
 
 {% block content %}
 
-<style>
-    /* Full area under nav */
-    .dashboard-wrap {
-        min-height: calc(100vh - 80px);
-        display: flex;
-        justify-content: flex-end;   /* anchor to right */
-        align-items: flex-start;     /* anchor to top */
-        padding-right: 35px;              /* 🔥 controls BOTH top & right gap */
-        box-sizing: border-box;
-    }
-
-    /* Right panel container */
-    .panel {
-        width: 100%;
-        max-width: 520px;            /* card width control */
-    }
-
-    .dash {
-        background: #2a2a2a;
-        border: 1px solid #3a3a3a;
-        border-radius: 20px;
-        padding: 40px 36px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    }
-
-    .welcome {
-        font-size: 22px;
-        font-weight: bold;
-        margin-bottom: 6px;
-        text-align: center;
-    }
-
-    .sub {
-        color: #aaa;
-        margin-bottom: 30px;
-        text-align: center;
-        font-size: 13px;
-    }
-
-    .cards {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-        margin-bottom: 34px;
-    }
-
-    .card {
-        background: #2a2a2a;
-        border: 1px solid #3a3a3a;
-        border-radius: 14px;
-        padding: 18px 8px;
-        text-align: center;
-    }
-
-    .card-label {
-        font-size: 11px;
-        color: #777;
-        margin-bottom: 6px;
-        letter-spacing: 1px;
-    }
-
-    .card-value {
-        font-size: 26px;
-        font-weight: bold;
-    }
-
-    .cta {
-        display: block;
-        width: fit-content;
-        margin: 0 auto;
-        padding: 12px 34px;
-        font-size: 14px;
-        background: white;
-        color: black;
-        border-radius: 30px;
-        text-decoration: none;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .cta:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(255,255,255,0.15);
-    }
-
-    .hint {
-        margin-top: 12px;
-        color: #777;
-        font-size: 12px;
-        text-align: center;
-    }
-</style>
-
 <div class="dashboard-wrap">
 
-    <div class="panel">
-        <div class="dash">
+    <div class="dashboard-panel">
+        <div class="dashboard-card">
 
-            <div class="welcome">
+            <div class="dashboard-welcome">
                 Welcome back,<br>{{ username }}
             </div>
 
-            <div class="sub">
+            <div class="dashboard-sub">
                 This is your journey. One challenge at a time.
             </div>
 
             {% if error_message %}
-            <div style="
-                background: rgba(255, 68, 68, 0.15);
-                color: #ff4444;
-                border: 1px solid rgba(255, 68, 68, 0.25);
-                padding: 14px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                font-size: 13px;
-                text-align: center;
-            ">
+            <div class="alert alert-error">
                 ⚠️ {{ error_message }}
             </div>
             {% endif %}
 
-            <div class="cards">
-                <div class="card">
-                    <div class="card-label">LEVEL</div>
-                    <div class="card-value">{{ level }}</div>
+            <div class="dashboard-cards">
+                <div class="dashboard-card-item">
+                    <div class="dashboard-card-label">LEVEL</div>
+                    <div class="dashboard-card-value">{{ level }}</div>
                 </div>
 
-                <div class="card">
-                    <div class="card-label">STREAK</div>
-                    <div class="card-value">{{ streak }}</div>
+                <div class="dashboard-card-item">
+                    <div class="dashboard-card-label">STREAK</div>
+                    <div class="dashboard-card-value">{{ streak }}</div>
                 </div>
 
-                <div class="card">
-                    <div class="card-label">VERIFIED</div>
-                    <div class="card-value">
+                <div class="dashboard-card-item">
+                    <div class="dashboard-card-label">VERIFIED</div>
+                    <div class="dashboard-card-value">
                         {{ "Yes" if verified else "No" }}
                     </div>
                 </div>
             </div>
 
-            <a href="/challenge" class="cta">
-                ⚔️ Enter Today’s Challenge
+            <a href="/challenge" class="dashboard-cta">
+                ⚔️ Enter Today's Challenge
             </a>
 
-            <div class="hint">
-                Complete today’s challenge to grow stronger.
+            <div class="dashboard-hint">
+                Complete today's challenge to grow stronger.
             </div>
 
         </div>
