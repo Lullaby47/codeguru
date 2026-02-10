@@ -240,6 +240,20 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     transform: scale(1.1);
 }
 
+/* Softer logout icon styling on mobile */
+@media (max-width: 719px) {
+    .logout-icon {
+        font-size: 18px !important;
+        filter: none;
+        color: #ff6666 !important;
+    }
+
+    .logout-link:hover .logout-icon {
+        filter: none;
+        transform: scale(1.05);
+    }
+}
+
 .nav-item {
     font-size: 18px;
     opacity: 0.65;
