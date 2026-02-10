@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from app.web.debug_routes import router as debug_router
 
 from app.db.base import Base, engine
 from app.auth.models import User
@@ -11,6 +12,7 @@ from app.submissions.routes import router as submission_router  # 🔥 ADD THIS
 
 
 app = FastAPI(title="CodeGuru", version="0.1.0")
+app.include_router(debug_router)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -26,3 +28,4 @@ app.include_router(submission_router)  # 🔥 ADD THIS
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse(url="/login")
+
