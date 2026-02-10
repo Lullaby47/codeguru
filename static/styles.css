@@ -203,7 +203,8 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 .nav-center {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     font-size: 18px;
     font-weight: bold;
     letter-spacing: 2px;
