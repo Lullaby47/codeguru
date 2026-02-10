@@ -114,6 +114,15 @@
 {% if not hide_nav %}
 <!-- CodeGuru title below nav on mobile -->
 <div class="nav-title-mobile">
+    <!-- User Profile Icon (mobile only - shown in second row) -->
+    <div class="user-profile-icon-mobile" id="userProfileIconMobile" title="Your Profile" 
+         data-user-level="{% if user %}{{ user.level }}{% else %}1{% endif %}"
+         data-username="{% if user %}{{ user.username }}{% else %}Guest{% endif %}"
+         data-email="{% if user %}{{ user.email }}{% else %}guest@example.com{% endif %}"
+         data-streak="{% if user %}{{ user.streak }}{% else %}0{% endif %}"
+         data-verified="{% if user %}{{ 'Yes' if user.is_verified else 'No' }}{% else %}No{% endif %}">
+        <div class="profile-level">{% if user %}{{ user.username }}{% else %}Guest{% endif %}</div>
+    </div>
     <a href="/dashboard">
         <div class="codeguru-title-mobile">CODEGURU</div>
     </a>
@@ -152,7 +161,7 @@
     setInterval(nextQuote, 300000);
     if (quoteEl) quoteEl.addEventListener("click", nextQuote);
 
-    // User Profile Icon Click Handler
+    // User Profile Icon Click Handler (desktop)
     const profileIcon = document.getElementById("userProfileIcon");
     if (profileIcon) {
         profileIcon.addEventListener("click", function(e) {
@@ -161,9 +170,19 @@
         });
     }
 
+    // User Profile Icon Click Handler (mobile)
+    const profileIconMobile = document.getElementById("userProfileIconMobile");
+    if (profileIconMobile) {
+        profileIconMobile.addEventListener("click", function(e) {
+            e.stopPropagation();
+            showProfileModal();
+        });
+    }
+
     // Show Profile Modal
     function showProfileModal() {
-        const profileIcon = document.getElementById("userProfileIcon");
+        // Try desktop icon first, fall back to mobile icon
+        const profileIcon = document.getElementById("userProfileIcon") || document.getElementById("userProfileIconMobile");
         if (!profileIcon) return;
 
         const userLevel = profileIcon.getAttribute("data-user-level") || "1";

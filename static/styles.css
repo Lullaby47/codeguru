@@ -240,16 +240,31 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     transform: scale(1.1);
 }
 
-/* Softer logout icon styling on mobile */
+/* Clean logout button styling on mobile */
 @media (max-width: 719px) {
+    .logout-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .logout-icon {
         font-size: 18px !important;
         filter: none;
         color: #ff6666 !important;
+        background: rgba(255, 102, 102, 0.1);
+        border: 1px solid rgba(255, 102, 102, 0.3);
+        border-radius: 6px;
+        padding: 6px 8px;
+        min-width: 36px;
+        min-height: 36px;
+        transition: all 0.2s ease;
     }
 
-    .logout-link:hover .logout-icon {
-        filter: none;
+    .logout-link:hover .logout-icon,
+    .logout-link:active .logout-icon {
+        background: rgba(255, 102, 102, 0.2);
+        border-color: rgba(255, 102, 102, 0.5);
         transform: scale(1.05);
     }
 }
@@ -295,6 +310,13 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     min-height: 44px;
     display: flex;
     align-items: center;
+}
+
+/* Hide user profile icon in nav-left on mobile (shown in nav-title-mobile instead) */
+@media (max-width: 719px) {
+    .user-profile-icon {
+        display: none;
+    }
 }
 
 .user-profile-icon:hover {
@@ -370,7 +392,36 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     border-bottom: 1px solid var(--border);
     padding: 8px 16px;
     z-index: 999;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-profile-icon-mobile {
+    cursor: pointer;
+    padding: 6px 10px;
+    background: rgba(0, 255, 102, 0.1);
+    border: 1px solid rgba(0, 255, 102, 0.3);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    user-select: none;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.user-profile-icon-mobile:hover {
+    background: rgba(0, 255, 102, 0.2);
+    border-color: rgba(0, 255, 102, 0.5);
+    transform: scale(1.05);
+}
+
+.user-profile-icon-mobile .profile-level {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--green);
+    letter-spacing: 0.5px;
 }
 
 .codeguru-title-mobile {
@@ -381,6 +432,11 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     text-align: center;
     animation: blinkIdle 1.3s infinite;
     cursor: pointer;
+    flex: 1;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: fit-content;
 }
 
 .codeguru-title-mobile:hover {
@@ -1100,6 +1156,10 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 
     .nav-title-mobile {
         display: none; /* Hide mobile title on desktop */
+    }
+
+    .user-profile-icon {
+        display: flex; /* Show user profile icon in nav-left on desktop */
     }
 
     .nav-right {
