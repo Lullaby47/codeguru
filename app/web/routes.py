@@ -101,6 +101,13 @@ def login_submit(
         data={"email_or_username": email_or_username, "password": password},
     )
 
+    # Log backend response for troubleshooting
+    try:
+        print("[WEB] /login -> /auth/login status:", r.status_code, flush=True)
+        print("[WEB] /auth/login body:", r.text[:300], flush=True)
+    except Exception:
+        pass
+
     # ✅ Accept any 2xx
     if not (200 <= r.status_code < 300):
         return templates.TemplateResponse(
@@ -109,7 +116,13 @@ def login_submit(
         )
 
     try:
-        token = r.json().get("access_token")
+        j = r.json()
+        # Support multiple possible token keys
+        token = (
+            j.get("access_token")
+            or j.get("accessToken")
+            or j.get("token")
+        )
     except Exception:
         token = None
 
