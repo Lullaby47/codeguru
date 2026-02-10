@@ -49,6 +49,7 @@ def login(
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    print("[AUTH] /auth/login called", flush=True)
     # Try to find user by email first, then by username
     user = db.query(User).filter(User.email == email_or_username).first()
     
@@ -57,7 +58,9 @@ def login(
         user = db.query(User).filter(User.username == email_or_username).first()
 
     if not user or not verify_password(password, user.password_hash):
+        print("[AUTH] Invalid credentials for:", email_or_username, flush=True)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": user.username})
+    print("[AUTH] Login successful for:", user.username, flush=True)
     return {"access_token": token}
