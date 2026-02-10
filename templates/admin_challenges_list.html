@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Question List - Admin{% endblock %}
+
+{% block content %}
+
+<style>
+/* ===== LAYOUT ===== */
+.journey-layout {
+    display: grid;
+    grid-template-columns: 220px 320px 1fr;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 30px auto;
+}
+
+/* Modes */
+.journey-layout.tree-mode {
+    grid-template-columns: 220px 1fr;
+}
+.journey-layout.detail-mode {
+    grid-template-columns: 220px 1fr;
+}
+
+/* Panels */
+.left-panel,
+.middle-panel,
+.right-panel {
+    background: #0f0f0f;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.middle-panel.hidden,
+.right-panel.hidden {
+    display: none;
+}
+
+/* ===== LEFT ===== */
+.left-panel h3 {
+    font-size: 18px;
+    color: #00ff66;
+    margin: 0 0 14px 0;
+    font-weight: 600;
+    text-align: center;
+    width: 100%;
+}
+
+.left-panel .item {
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #ccc;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.left-panel .item.active {
+    background: #111;
+    color: #fff;
+}
+
+.left-panel .item:hover {
+    background: #111;
+}
+
+/* ===== TREE ===== */
+.tree-title {
+    font-size: 18px;
+    color: #00bfff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 600;
+    width: 100%;
+    text-align: center;
+}
+
+.tree-back {
+    font-size: 12px;
+    color: #777;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.tree-back:hover {
+    color: #00ff66;
+    background: #111;
+}
+
+.tree-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #bbb;
+    transition: all 0.2s ease;
+    margin-bottom: 4px;
+}
+
+.tree-item:hover {
+    background: #111;
+    box-shadow: 0 0 12px rgba(0, 191, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.tree-item .view {
+    font-size: 11px;
+    color: #777;
+}
+
+.tree-item:hover .view {
+    color: #00ff66;
+}
+
+/* ===== RIGHT ===== */
+.right-panel {
+    padding: 24px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #777;
+    margin-top: 120px;
+    font-size: 14px;
+}
+
+.challenge-detail {
+    animation: fadeSlide .25s ease-out;
+}
+
+@keyframes fadeSlide {
+    from { opacity:0; transform:translateY(6px); }
+    to { opacity:1; transform:none; }
+}
+
+.breadcrumb {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.breadcrumb .main { color:#00ff66; }
+.breadcrumb .sub { color:#ffd84d; }
+
+.title-row {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    padding-bottom:14px;
+    border-bottom:1px solid #1f1f1f;
+    margin-bottom: 14px;
+}
+
+.title-row h2 {
+    font-size:22px;
+    margin:0;
+    color: #fff;
+}
+
+.meta {
+    font-size:11px;
+    color:#666;
+    margin:12px 0 18px;
+}
+
+.section {
+    margin-top:22px;
+}
+
+.section h3 {
+    font-size:13px;
+    color:#00ff66;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+.section-content {
+    background:#252526;
+    border:1px solid #3e3e3e;
+    border-radius:8px;
+    padding:16px;
+    color:#ccc;
+    font-size:14px;
+    line-height:1.6;
+    white-space:pre-wrap;
+}
+
+.section-code {
+    background:#1e1e1e;
+    border:1px solid #3e3e3e;
+    border-radius:8px;
+    padding:16px;
+    color:#00ff66;
+    font-family:monospace;
+    font-size:13px;
+    white-space:pre-wrap;
+}
+</style>
+
+<div class="journey-layout tree-mode" id="journeyLayout">
+
+    <!-- LEFT -->
+    <div class="left-panel">
+        <h3>Categories</h3>
+        {% for category in main_categories %}
+        <div class="item {% if loop.first %}active{% endif %}" 
+             data-category="{{ category }}" 
+             onclick="loadCategory('{{ category }}', this)">
+            {{ category }}
+        </div>
+        {% endfor %}
+        {% if not main_categories %}
+        <div class="item" style="color: #777;">No categories</div>
+        {% endif %}
+    </div>
+
+    <!-- MIDDLE (TREE) -->
+    <div class="middle-panel" id="middlePanel">
+        <div id="subcategoriesView">
+            <div class="tree-title" style="color: #00bfff;">Stage</div>
+            <div id="subcategoriesList">
+                <div style="color:#777;padding:10px;">Select a category to view stages</div>
+            </div>
+        </div>
+        <div id="challengesView" style="display:none;">
+            <div class="tree-title">
+                <span class="tree-back" id="backToSubcategories">← Back</span>
+                <span id="challengesTitle">Stage</span>
+            </div>
+            <div id="challengesList">
+                <!-- Challenges will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT (DETAIL) -->
+    <div class="right-panel hidden" id="rightPanel">
+        <div class="empty-state" id="emptyState">
+            Select a challenge to view details
+        </div>
+        <div id="detailContent" style="display:none;">
+            <!-- Challenge detail will be loaded here -->
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    const layout = document.getElementById("journeyLayout");
+    const middle = document.getElementById("middlePanel");
+    const right = document.getElementById("rightPanel");
+    const empty = document.getElementById("emptyState");
+    const detail = document.getElementById("detailContent");
+    
+    const subcategoriesView = document.getElementById("subcategoriesView");
+    const challengesView = document.getElementById("challengesView");
+    const subcategoriesList = document.getElementById("subcategoriesList");
+    const challengesList = document.getElementById("challengesList");
+    const challengesTitle = document.getElementById("challengesTitle");
+    const backToSubcategories = document.getElementById("backToSubcategories");
+    
+    let currentCategory = null;
+    let currentSubcategory = null;
+
+    // Back to subcategories
+    backToSubcategories.onclick = () => {
+        subcategoriesView.style.display = 'block';
+        challengesView.style.display = 'none';
+    };
+
+    // Load category (subcategories/stages)
+    window.loadCategory = function(category, element) {
+        // Update active state
+        document.querySelectorAll('.left-panel .item').forEach(item => {
+            item.classList.remove('active');
+        });
+        element.classList.add('active');
+        
+        currentCategory = category;
+        subcategoriesView.style.display = 'block';
+        challengesView.style.display = 'none';
+        subcategoriesList.innerHTML = '<div style="color:#777;padding:10px;">Loading...</div>';
+
+        fetch(`/challenge/subcategories/${encodeURIComponent(category)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            subcategoriesList.innerHTML = '';
+            if (data.subcategories && data.subcategories.length > 0) {
+                data.subcategories.forEach(sub => {
+                    const item = document.createElement('div');
+                    item.className = 'tree-item';
+                    item.textContent = sub;
+                    item.onclick = () => loadChallenges(category, sub);
+                    subcategoriesList.appendChild(item);
+                });
+            } else {
+                subcategoriesList.innerHTML = '<div style="color:#777;padding:10px;">No stages found</div>';
+            }
+        })
+        .catch(error => {
+            subcategoriesList.innerHTML = '<div style="color:#777;padding:10px;">Failed to load stages</div>';
+        });
+    };
+
+    // Load challenges for a subcategory
+    function loadChallenges(category, subCategory) {
+        currentSubcategory = subCategory;
+        subcategoriesView.style.display = 'none';
+        challengesView.style.display = 'block';
+        challengesTitle.textContent = subCategory;
+        challengesList.innerHTML = '<div style="color:#777;padding:10px;">Loading...</div>';
+
+        // Fetch all challenges for this category and subcategory
+        fetch(`/challenge/admin/list?main_category=${encodeURIComponent(category)}&sub_category=${encodeURIComponent(subCategory)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            challengesList.innerHTML = '';
+            if (data.challenges && data.challenges.length > 0) {
+                data.challenges.forEach(challenge => {
+                    const item = document.createElement('div');
+                    item.className = 'tree-item';
+                    item.innerHTML = `<span>${challenge.title} - level ${challenge.level}</span><span class="view">View</span>`;
+                    item.onclick = () => showChallengeDetail(challenge);
+                    challengesList.appendChild(item);
+                });
+            } else {
+                challengesList.innerHTML = '<div style="color:#777;padding:10px;">No challenges in this stage</div>';
+            }
+        })
+        .catch(error => {
+            challengesList.innerHTML = '<div style="color:#777;padding:10px;">Failed to load challenges</div>';
+        });
+    }
+
+    // Show challenge detail
+    function showChallengeDetail(challenge) {
+        middle.classList.add("hidden");
+        right.classList.remove("hidden");
+        layout.classList.remove("tree-mode");
+        layout.classList.add("detail-mode");
+        empty.style.display = "none";
+        detail.style.display = "block";
+        
+        detail.innerHTML = `
+            <div class="challenge-detail">
+                <div class="breadcrumb">
+                    <span class="main">${challenge.main_category || 'N/A'}</span>
+                    • <span class="sub">${challenge.sub_category || 'N/A'}</span>
+                </div>
+                
+                <div class="title-row">
+                    <h2>${challenge.title} - level ${challenge.level}</h2>
+                    <a href="/admin/challenge/edit/${challenge.id}" 
+                       style="
+                           padding: 8px 16px;
+                           background: rgba(0, 255, 102, 0.15);
+                           color: #00ff66;
+                           border: 1px solid rgba(0, 255, 102, 0.3);
+                           border-radius: 6px;
+                           text-decoration: none;
+                           font-size: 12px;
+                           font-weight: 600;
+                           transition: all 0.2s ease;
+                       " 
+                       onmouseover="this.style.background='rgba(0, 255, 102, 0.25)'; this.style.transform='translateY(-2px)'" 
+                       onmouseout="this.style.background='rgba(0, 255, 102, 0.15)'; this.style.transform='none'">
+                        ✏️ Rewrite
+                    </a>
+                </div>
+                
+                <div class="meta">
+                    Level ${challenge.level} • ID: #${challenge.id}
+                    ${challenge.challenge_date ? `• Daily: ${challenge.challenge_date}` : '• Pool Challenge'}
+                </div>
+                
+                <div class="section">
+                    <h3>Description</h3>
+                    <div class="section-content">${escapeHtml(challenge.description)}</div>
+                </div>
+                
+                ${challenge.expected_output ? `
+                <div class="section">
+                    <h3>Expected Output</h3>
+                    <div class="section-code">${escapeHtml(challenge.expected_output)}</div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Back to list
+    const backBtn = document.createElement('div');
+    backBtn.className = 'tree-back';
+    backBtn.textContent = '← Back to List';
+    backBtn.style.marginBottom = '20px';
+    backBtn.style.cursor = 'pointer';
+    backBtn.onclick = () => {
+        middle.classList.remove("hidden");
+        right.classList.add("hidden");
+        layout.classList.remove("detail-mode");
+        layout.classList.add("tree-mode");
+        detail.innerHTML = "";
+        detail.style.display = "none";
+        empty.style.display = "block";
+    };
+    right.insertBefore(backBtn, right.firstChild);
+
+    // Load first category if available
+    {% if main_categories %}
+    const firstCategory = document.querySelector('.left-panel .item.active');
+    if (firstCategory) {
+        loadCategory(firstCategory.dataset.category, firstCategory);
+    }
+    {% endif %}
+})();
+</script>
+
+{% endblock %}

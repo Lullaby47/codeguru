@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .admin-wrap {
+        min-height: calc(100vh - 80px);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 24px;
+        box-sizing: border-box;
+    }
+
+    .admin-panel {
+        width: 100%;
+        max-width: 520px;
+        background: #0f0f0f;
+        border: 1px solid #222;
+        border-radius: 20px;
+        padding: 36px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    .admin-title {
+        font-size: 22px;
+        font-weight: bold;
+        margin-bottom: 6px;
+        text-align: center;
+    }
+
+    .admin-sub {
+        font-size: 13px;
+        color: #aaa;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .field {
+        margin-bottom: 18px;
+    }
+
+    .field label {
+        display: block;
+        font-size: 12px;
+        color: #777;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+        width: 100%;
+        background: #000;
+        border: 1px solid #222;
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: white;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .field textarea {
+        resize: vertical;
+        min-height: 80px;
+        font-family: monospace;
+    }
+
+    .field small {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        color: #666;
+    }
+
+    .error {
+        background: #2a1212;
+        border: 1px solid #4a1f1f;
+        color: #ffb3b3;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        margin-bottom: 18px;
+        text-align: center;
+    }
+
+    .submit-btn {
+        margin-top: 10px;
+        width: 100%;
+        padding: 12px;
+        border-radius: 30px;
+        background: white;
+        color: black;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(255,255,255,0.15);
+    }
+</style>
+
+<div class="admin-wrap">
+    <div class="admin-panel">
+
+        <div class="admin-title">{% if edit_mode %}Edit Challenge{% else %}Create Daily Challenge{% endif %}</div>
+        <div class="admin-sub">{% if edit_mode %}Modify an existing challenge{% else %}Forge today's trial for your users{% endif %}</div>
+        
+        <div style="margin-bottom: 20px; text-align: center;">
+            <a href="/admin/challenges/list" style="
+                display: inline-block;
+                padding: 10px 20px;
+                background: rgba(0, 255, 102, 0.15);
+                color: #00ff66;
+                border: 1px solid rgba(0, 255, 102, 0.3);
+                border-radius: 10px;
+                text-decoration: none;
+                font-size: 13px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+            " onmouseover="this.style.background='rgba(0, 255, 102, 0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(0, 255, 102, 0.15)'; this.style.transform='none'">
+                📋 Question List
+            </a>
+        </div>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+            <div style="background: rgba(0, 255, 102, 0.15); color: #00ff66; padding: 10px; border-radius: 8px; margin-bottom: 14px; font-size: 13px;">✅ {{ success }}</div>
+        {% endif %}
+
+        <form method="post" action="{% if edit_mode %}/admin/challenge/update/{{ challenge.id }}{% else %}/admin/challenge/new{% endif %}">
+            {% if edit_mode %}
+            <input type="hidden" name="challenge_id" value="{{ challenge.id }}">
+            {% endif %}
+
+            <!-- MAIN CATEGORY (FREE TEXT) -->
+            <div class="field">
+                <label>MAIN CATEGORY</label>
+                <input
+                    type="text"
+                    name="main_category"
+                    placeholder="e.g. Basic Python, Automation, Web"
+                    value="{% if challenge %}{{ challenge.main_category or '' }}{% endif %}"
+                    required
+                >
+                <small>Top-level tree node users click first</small>
+            </div>
+
+            <!-- SUB CATEGORY (CONTROLLED STAGE) -->
+            <div class="field">
+                <label>SKILL STAGE</label>
+                <select name="sub_category" required>
+                    <option value="Fundamental" {% if challenge and challenge.sub_category == 'Fundamental' %}selected{% endif %}>Fundamental</option>
+                    <option value="Amateur" {% if challenge and challenge.sub_category == 'Amateur' %}selected{% endif %}>Amateur</option>
+                    <option value="Intermediate" {% if challenge and challenge.sub_category == 'Intermediate' %}selected{% endif %}>Intermediate</option>
+                    <option value="Advanced" {% if challenge and challenge.sub_category == 'Advanced' %}selected{% endif %}>Advanced</option>
+                    <option value="Builder" {% if challenge and challenge.sub_category == 'Builder' %}selected{% endif %}>Builder</option>
+                    <option value="Expert" {% if challenge and challenge.sub_category == 'Expert' %}selected{% endif %}>Expert</option>
+                    <option value="Master" {% if challenge and challenge.sub_category == 'Master' %}selected{% endif %}>Master</option>
+                </select>
+                <small>Learning maturity inside the category</small>
+            </div>
+
+            <!-- LEVEL -->
+            <div class="field">
+                <label>LEVEL</label>
+                <input type="number" name="level" value="{% if challenge %}{{ challenge.level }}{% else %}1{% endif %}" required>
+            </div>
+
+            <!-- TITLE -->
+            <div class="field">
+                <label>TITLE</label>
+                <input type="text" name="title" placeholder="Hello World" value="{% if challenge %}{{ challenge.title }}{% endif %}" required>
+            </div>
+
+            <!-- DESCRIPTION -->
+            <div class="field">
+                <label>DESCRIPTION</label>
+                <textarea name="description" required>{% if challenge %}{{ challenge.description }}{% endif %}</textarea>
+            </div>
+
+            <!-- EXPECTED OUTPUT -->
+            <div class="field">
+                <label>EXPECTED OUTPUT</label>
+                <textarea name="expected_output" required>{% if challenge %}{{ challenge.expected_output }}{% endif %}</textarea>
+                <small>Exact output required</small>
+            </div>
+
+            <!-- DATE -->
+            <div class="field">
+                <label>CHALLENGE DATE (Optional)</label>
+                <input type="date" name="challenge_date" value="{% if challenge and challenge.challenge_date %}{{ challenge.challenge_date }}{% else %}{{ today }}{% endif %}">
+                <small>Leave empty to add to challenge pool (for Learn More). Set date for daily challenge.</small>
+            </div>
+
+            <button type="submit" class="submit-btn">
+                {% if edit_mode %}Update Challenge{% else %}Create Challenge{% endif %}
+            </button>
+
+        </form>
+    </div>
+</div>
+
+{% endblock %}

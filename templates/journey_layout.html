@@ -1,0 +1,785 @@
+<!-- FILE: templates/journey_layout.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+/* ===== LAYOUT ===== */
+.journey-layout {
+    display: grid;
+    grid-template-columns: 220px 320px 1fr;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 30px auto;
+}
+
+.journey-layout.has-search {
+    grid-template-rows: auto 1fr;
+}
+
+.journey-search-container {
+    grid-column: 1 / -1;
+    margin-bottom: 20px;
+}
+
+.journey-search-container.hidden {
+    display: none !important;
+}
+
+.journey-search-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    color: #ccc;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+.journey-search-input:focus {
+    outline: none;
+    border-color: #00ff66;
+    box-shadow: 0 0 0 2px rgba(0, 255, 102, 0.1);
+}
+
+.journey-search-input::placeholder {
+    color: #666;
+}
+
+/* Modes */
+.journey-layout.tree-mode {
+    grid-template-columns: 220px 1fr;
+}
+.journey-layout.detail-mode {
+    grid-template-columns: 220px 1fr;
+}
+
+/* Panels */
+.left-panel,
+.middle-panel,
+.right-panel {
+    background: #0f0f0f;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.left-panel.hidden,
+.middle-panel.hidden,
+.right-panel.hidden {
+    display: none !important;
+}
+
+/* ===== LEFT ===== */
+.left-panel h3 {
+    font-size: 18px;
+    color: #00ff66;
+    margin: 0 0 14px 0;
+    font-weight: 600;
+    text-align: center;
+    width: 100%;
+}
+
+.left-panel .item {
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #ccc;
+    width: 100%;
+    text-align: center;
+}
+
+.left-panel .item.active {
+    background: #111;
+    color: #fff;
+}
+
+/* ===== TREE ===== */
+.tree-title {
+    font-size: 18px;
+    color: #00bfff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 600;
+    width: 100%;
+    text-align: center;
+}
+
+.tree-back {
+    font-size: 12px;
+    color: #777;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.tree-back:hover {
+    color: #00ff66;
+    background: #111;
+}
+
+.tree-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #bbb;
+    transition: all 0.2s ease;
+}
+
+.tree-item:hover {
+    background: #111;
+    box-shadow: 0 0 12px rgba(0, 191, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.tree-item.completed {
+    color: #00ff66;
+}
+
+.tree-item.current {
+    background: #111;
+    color: #fff;
+}
+
+.tree-item.locked {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.tree-item .view {
+    font-size: 11px;
+    color: #777;
+}
+
+.tree-item:hover .view {
+    color: #00ff66;
+}
+
+/* ===== SEARCH RESULTS ===== */
+.search-results-container {
+    grid-column: 1 / -1;
+    background: #0f0f0f;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    padding: 24px;
+    min-height: 400px;
+}
+
+.search-results-container.hidden {
+    display: none !important;
+}
+
+.search-results-header {
+    border-bottom: 1px solid #1f1f1f;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.search-results-list {
+    display: grid;
+    gap: 16px;
+}
+
+.search-result-item {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.search-result-item:hover {
+    border-color: #00ff66;
+    background: #2f2f2f;
+}
+
+.search-result-item .result-title {
+    font-size: 15px;
+    color: #fff;
+    line-height: 1.8;
+    padding: 8px 0;
+}
+
+.search-result-item .view-solution-link {
+    color: #00ff66;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.search-result-item .view-solution-link:hover {
+    color: #00cc52;
+    text-decoration: underline;
+}
+
+.search-result-item.has-solution {
+    border-color: #00ff66;
+    border-width: 2px;
+}
+
+.search-result-item.has-solution .result-title::after {
+    content: " ✓";
+    color: #00ff66;
+    font-size: 14px;
+}
+
+/* ===== RIGHT ===== */
+.right-panel {
+    padding: 24px;
+    background: #0f0f0f;
+    border: 1px solid #1f1f1f;
+    border-radius: 12px;
+    /* Removed overflow-y and max-height to use main page scroll only */
+}
+
+.empty-state {
+    text-align: center;
+    color: #777;
+    margin-top: 120px;
+    font-size: 14px;
+}
+
+#detailContent {
+    width: 100%;
+    height: 100%;
+}
+</style>
+
+<div class="journey-layout tree-mode" id="journeyLayout">
+
+    <!-- SEARCH BOX AT TOP -->
+    <div class="journey-search-container" id="journeySearchContainer">
+        <input 
+            type="text" 
+            id="journeySearch" 
+            placeholder="Search challenges (e.g., 'hello world', 'loop', 'function')..." 
+            class="journey-search-input"
+            onkeyup="handleSearch(this.value)"
+            oninput="handleSearch(this.value)"
+        />
+    </div>
+    
+    <!-- SEARCH RESULTS PANEL (Full Width) -->
+    <div class="search-results-container hidden" id="searchResultsPanel">
+        <div class="search-results-header">
+            <h2 style="color: #00bfff; margin: 0 0 20px 0;">Search Results</h2>
+        </div>
+        <div id="searchResultsList" class="search-results-list">
+            <!-- Search results will be loaded here -->
+        </div>
+    </div>
+
+    <!-- LEFT -->
+    <div class="left-panel">
+        <h3>Journey</h3>
+            {% if main_categories %}
+            {% for category in main_categories %}
+            <div class="item journey-item {% if loop.first %}active{% endif %}" 
+                 data-category="{{ category }}"
+                 onclick="selectJourney('{{ category }}', this)">
+                {{ category }}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="item journey-item active" data-category="Basic Python" onclick="selectJourney('Basic Python', this)">Basic Python</div>
+        {% endif %}
+    </div>
+
+    <!-- MIDDLE (TREE) -->
+    <div class="middle-panel" id="middlePanel">
+        <div id="subcategoriesView">
+            <div class="tree-title" style="color: #00bfff;">Stage</div>
+            <div id="subcategoriesList">
+                <!-- Subcategories will be loaded here -->
+            </div>
+        </div>
+        <div id="solutionsView" style="display:none;">
+            <div class="tree-title">
+                <span class="tree-back" id="backToSubcategories">← Back</span>
+                <span id="solutionsTitle">Fundamentals</span>
+            </div>
+            <div id="solutionsList">
+                <!-- Solutions will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT (DETAIL) -->
+    <div class="right-panel hidden" id="rightPanel">
+        <div class="empty-state" id="emptyState">
+            Select a level to view details
+        </div>
+        <div id="detailContent" style="display:none;">
+            {% block detail %}{% endblock %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    const layout = document.getElementById("journeyLayout");
+    const left = document.querySelector('.left-panel');
+    const middle = document.getElementById("middlePanel");
+    const right = document.getElementById("rightPanel");
+    const empty = document.getElementById("emptyState");
+    const detail = document.getElementById("detailContent");
+    const searchResultsPanel = document.getElementById("searchResultsPanel");
+
+    // Ensure search results panel is hidden on page load
+    if (searchResultsPanel) {
+        searchResultsPanel.classList.add("hidden");
+    }
+    
+    // Clear any existing search on page load
+    const searchInput = document.getElementById("journeySearch");
+    if (searchInput) {
+        searchInput.value = "";
+    }
+    
+    // Check if detail content exists (from server render via progress.html)
+    // Look for progress-container which is rendered by progress.html
+    const progressContainer = document.querySelector('.progress-container');
+    if (progressContainer) {
+        // Move it into detailContent if it's not already there
+        if (progressContainer.parentElement !== detail) {
+            detail.appendChild(progressContainer);
+        }
+        // Show left panel (journey) and right panel (solution), hide middle panel
+        if (left) left.classList.remove("hidden");
+        middle.classList.add("hidden");
+        if (searchResultsPanel) searchResultsPanel.classList.add("hidden"); // Hide search results if showing detail
+        right.classList.remove("hidden");
+        layout.classList.remove("tree-mode");
+        layout.classList.add("detail-mode");
+        empty.style.display = "none";
+        detail.style.display = "block";
+        
+        // Make sure journey items are still clickable
+        // Re-attach click handlers to journey items
+        document.querySelectorAll('.left-panel .journey-item').forEach(item => {
+            const category = item.dataset.category || item.textContent.trim();
+            item.onclick = () => selectJourney(category, item);
+        });
+    }
+    const subcategoriesView = document.getElementById("subcategoriesView");
+    const solutionsView = document.getElementById("solutionsView");
+    const subcategoriesList = document.getElementById("subcategoriesList");
+    const solutionsList = document.getElementById("solutionsList");
+    const solutionsTitle = document.getElementById("solutionsTitle");
+    const backToSubcategories = document.getElementById("backToSubcategories");
+    const searchResultsList = document.getElementById("searchResultsList");
+    
+    // Get the initial category from the active item, or default to first category
+    let currentMainCategory = "Basic Python";
+    const activeItem = document.querySelector('.left-panel .item.active');
+    if (activeItem && activeItem.dataset.category) {
+        currentMainCategory = activeItem.dataset.category;
+    } else if (activeItem && activeItem.textContent.trim()) {
+        // Fallback: use text content if no data attribute
+        currentMainCategory = activeItem.textContent.trim();
+    }
+    
+    // Function to select a journey category
+    window.selectJourney = function(category, element) {
+        // Clear search if active
+        const searchInput = document.getElementById("journeySearch");
+        if (searchInput) {
+            searchInput.value = "";
+            if (searchResultsPanel) {
+                searchResultsPanel.classList.add("hidden");
+            }
+        }
+        
+        // Update active state
+        document.querySelectorAll('.left-panel .item').forEach(item => {
+            item.classList.remove('active');
+        });
+        if (element) {
+            element.classList.add('active');
+        }
+        
+        currentMainCategory = category;
+        // Reset to subcategories view
+        subcategoriesView.style.display = 'block';
+        solutionsView.style.display = 'none';
+        // Reload subcategories for the new category
+        loadSubcategories();
+        
+        // Also reset detail view if open
+        middle.classList.remove("hidden");
+        right.classList.add("hidden");
+        layout.classList.remove("detail-mode");
+        layout.classList.add("tree-mode");
+        detail.innerHTML = "";
+        detail.style.display = "none";
+        empty.style.display = "block";
+    };
+
+    // Back to subcategories
+    backToSubcategories.onclick = () => {
+        subcategoriesView.style.display = 'block';
+        solutionsView.style.display = 'none';
+    };
+
+    // Load subcategories when page loads
+    function loadSubcategories() {
+        fetch(`/challenge/subcategories/${encodeURIComponent(currentMainCategory)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            subcategoriesList.innerHTML = '';
+            data.subcategories.forEach(sub => {
+                const item = document.createElement('div');
+                item.className = 'tree-item';
+                item.textContent = sub;
+                item.onclick = () => loadSolutions(sub);
+                subcategoriesList.appendChild(item);
+            });
+        })
+        .catch(error => {
+            subcategoriesList.innerHTML = '<div style="color:#777;padding:10px;">Failed to load subcategories</div>';
+        });
+    }
+
+    // Load solutions for a subcategory (only attempted questions)
+    function loadSolutions(subCategory) {
+        subcategoriesView.style.display = 'none';
+        solutionsView.style.display = 'block';
+        solutionsTitle.textContent = subCategory;
+        solutionsList.innerHTML = '<div style="color:#777;padding:10px;">Loading...</div>';
+
+        fetch(`/challenge/solutions/${encodeURIComponent(currentMainCategory)}/${encodeURIComponent(subCategory)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            solutionsList.innerHTML = '';
+            if (data.solutions && data.solutions.length > 0) {
+                data.solutions.forEach(solution => {
+                    const item = document.createElement('div');
+                    item.className = solution.completed ? 'tree-item completed' : 'tree-item';
+                    // Format: "Title - level X" with "View solution" button
+                    item.innerHTML = `<span>${solution.title} - level ${solution.level}</span><span class="view">View solution</span>`;
+                    item.dataset.submissionId = solution.submission_id;
+                    item.onclick = () => {
+                        // Navigate to submission view page
+                        window.location.href = `/submission/${solution.submission_id}/view`;
+                    };
+                    solutionsList.appendChild(item);
+                });
+            } else {
+                solutionsList.innerHTML = '<div style="color:#777;padding:10px;">No attempted questions in this category yet</div>';
+            }
+        })
+        .catch(error => {
+            solutionsList.innerHTML = '<div style="color:#777;padding:10px;">Failed to load solutions</div>';
+        });
+    }
+
+    // Journey items are handled by the selectJourney function in the template onclick handlers
+
+    // Powerful AI-like search function
+    let searchTimeout;
+    window.handleSearch = function(searchTerm) {
+        clearTimeout(searchTimeout);
+        
+        // Handle null/undefined search term
+        if (!searchTerm) {
+            searchTerm = "";
+        }
+        
+        const searchLower = searchTerm.toLowerCase().trim();
+        
+        // If search is empty, hide search results panel, show normal view
+        if (!searchLower) {
+            if (searchResultsPanel) {
+                searchResultsPanel.classList.add("hidden");
+            }
+            if (left) left.classList.remove("hidden");
+            if (middle) middle.classList.remove("hidden");
+            return;
+        }
+        
+        // Debounce search for better performance
+        searchTimeout = setTimeout(() => {
+            performSearch(searchLower);
+        }, 300);
+    };
+    
+    function performSearch(searchTerm) {
+        // If search is empty, don't perform search
+        if (!searchTerm || !searchTerm.trim()) {
+            if (searchResultsPanel) {
+                searchResultsPanel.classList.add("hidden");
+            }
+            if (left) left.classList.remove("hidden");
+            if (middle) middle.classList.remove("hidden");
+            return;
+        }
+        
+        // Hide all panels, show only search results
+        if (left) left.classList.add("hidden");
+        if (middle) middle.classList.add("hidden");
+        if (right) right.classList.add("hidden");
+        if (searchResultsPanel) {
+            searchResultsPanel.classList.remove("hidden");
+        }
+        searchResultsList.innerHTML = '<div style="color:#777;padding:20px;text-align:center;">Searching...</div>';
+        
+        // Use the search API endpoint
+        fetch(`/challenge/search?q=${encodeURIComponent(searchTerm)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Search API response:', data); // Debug log
+            if (data.challenges && data.challenges.length > 0) {
+                // Get solutions for all challenges to determine which have been solved
+                const challengeIds = data.challenges.map(c => c.id);
+                const categoryMap = {};
+                data.challenges.forEach(c => {
+                    if (!categoryMap[c.main_category]) {
+                        categoryMap[c.main_category] = {};
+                    }
+                    if (!categoryMap[c.main_category][c.sub_category]) {
+                        categoryMap[c.main_category][c.sub_category] = [];
+                    }
+                    categoryMap[c.main_category][c.sub_category].push(c.id);
+                });
+                
+                // Fetch solutions for each category/subcategory combination
+                const solutionPromises = Object.keys(categoryMap).map(mainCat => 
+                    Object.keys(categoryMap[mainCat]).map(subCat =>
+                        fetch(`/challenge/solutions/${encodeURIComponent(mainCat)}/${encodeURIComponent(subCat)}`, {
+                            credentials: 'include',
+                            headers: { 'Accept': 'application/json' }
+                        }).then(r => r.json()).catch(() => ({ solutions: [] }))
+                    )
+                ).flat();
+                
+                Promise.all(solutionPromises).then(solutionResults => {
+                    // Create a map of challenge_id -> solution
+                    const solutionMap = {};
+                    solutionResults.forEach(result => {
+                        if (result.solutions) {
+                            result.solutions.forEach(sol => {
+                                solutionMap[sol.id] = sol;
+                            });
+                        }
+                    });
+                    
+                    // Score and sort challenges by relevance
+                    const scoredChallenges = data.challenges.map(challenge => {
+                        let score = 0;
+                        const titleLower = (challenge.title || '').toLowerCase();
+                        const descLower = (challenge.description || '').toLowerCase();
+                        const outputLower = (challenge.expected_output || '').toLowerCase();
+                        
+                        // Title match gets highest score
+                        if (titleLower.includes(searchTerm)) score += 100;
+                        if (titleLower.startsWith(searchTerm)) score += 50;
+                        
+                        // Description match
+                        if (descLower.includes(searchTerm)) score += 30;
+                        
+                        // Expected output match
+                        if (outputLower.includes(searchTerm)) score += 20;
+                        
+                        // Has solution (prioritize solved challenges)
+                        if (solutionMap[challenge.id]) score += 40;
+                        
+                        return { challenge, score, hasSolution: !!solutionMap[challenge.id], solution: solutionMap[challenge.id] };
+                    });
+                    
+                    // Sort by score (highest first)
+                    scoredChallenges.sort((a, b) => b.score - a.score);
+                    
+                    // Display results
+                    displaySearchResults(scoredChallenges);
+                }).catch(() => {
+                    // If solution fetch fails, still show challenges without solution info
+                    const scoredChallenges = data.challenges.map(challenge => ({
+                        challenge,
+                        score: 0,
+                        hasSolution: false,
+                        solution: null
+                    }));
+                    displaySearchResults(scoredChallenges);
+                });
+            } else {
+                searchResultsList.innerHTML = '<div style="color:#777;padding:20px;text-align:center;">No challenges found matching your search.</div>';
+            }
+        })
+        .catch(error => {
+            searchResultsList.innerHTML = '<div style="color:#777;padding:20px;text-align:center;">Search failed. Please try again.</div>';
+        });
+    }
+    
+    function displaySearchResults(scoredChallenges) {
+        searchResultsList.innerHTML = '';
+        if (scoredChallenges.length === 0) {
+            searchResultsList.innerHTML = '<div style="color:#777;padding:20px;text-align:center;">No challenges found matching your search.</div>';
+            return;
+        }
+        
+        scoredChallenges.forEach(({ challenge, hasSolution, solution }) => {
+            const item = document.createElement('div');
+            item.className = `search-result-item ${hasSolution ? 'has-solution' : ''}`;
+            
+            // Format: "Main Category Sub Category - Title - level X --- view solution"
+            const mainCategory = escapeHtml(challenge.main_category || '');
+            const subCategory = escapeHtml(challenge.sub_category || '');
+            const title = escapeHtml(challenge.title);
+            const level = challenge.level;
+            
+            const categoryDisplay = subCategory ? `${mainCategory} ${subCategory}` : mainCategory;
+            
+            item.innerHTML = `
+                <div class="result-title">
+                    ${categoryDisplay} - ${title} - level ${level} --- 
+                    <a class="view-solution-link">
+                        view solution
+                    </a>
+                </div>
+            `;
+            
+            const goToTarget = () => {
+                if (hasSolution && solution && solution.submission_id) {
+                    // Open the submission view (journey panel + solution panel)
+                    window.location.href = `/submission/${solution.submission_id}/view`;
+                } else {
+                    // No solution yet -> open the challenge page
+                    window.location.href = `/challenge?challenge_id=${challenge.id}`;
+                }
+            };
+            
+            const link = item.querySelector('.view-solution-link');
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goToTarget();
+                });
+            }
+            
+            item.addEventListener('click', () => {
+                goToTarget();
+            });
+            
+            searchResultsList.appendChild(item);
+        });
+    }
+    
+    function displayChallenges(challenges, solutionMap) {
+        searchResultsList.innerHTML = '';
+        if (challenges.length === 0) {
+            searchResultsList.innerHTML = '<div style="color:#777;padding:20px;text-align:center;">No challenges found matching your search.</div>';
+            return;
+        }
+        
+        challenges.forEach(challenge => {
+            const hasSolution = !!solutionMap[challenge.id];
+            const solution = solutionMap[challenge.id];
+            const item = document.createElement('div');
+            item.className = `search-result-item ${hasSolution ? 'has-solution' : ''}`;
+            
+            // Format: "Main Category Sub Category - Title - level X --- view solution"
+            const mainCategory = escapeHtml(challenge.main_category || '');
+            const subCategory = escapeHtml(challenge.sub_category || '');
+            const title = escapeHtml(challenge.title);
+            const level = challenge.level;
+            
+            const categoryDisplay = subCategory ? `${mainCategory} ${subCategory}` : mainCategory;
+            
+            item.innerHTML = `
+                <div class="result-title">
+                    ${categoryDisplay} - ${title} - level ${level} --- 
+                    <a class="view-solution-link">
+                        view solution
+                    </a>
+                </div>
+            `;
+            
+            const goToTarget = () => {
+                if (hasSolution && solution && solution.submission_id) {
+                    window.location.href = `/submission/${solution.submission_id}/view`;
+                } else {
+                    window.location.href = `/challenge?challenge_id=${challenge.id}`;
+                }
+            };
+            
+            const link = item.querySelector('.view-solution-link');
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goToTarget();
+                });
+            }
+            
+            item.addEventListener('click', () => {
+                goToTarget();
+            });
+            
+            searchResultsList.appendChild(item);
+        });
+    }
+    
+    function checkAndShowChallenge(challenge) {
+        // Check if user has a submission for this challenge
+        fetch(`/challenge/solutions/${encodeURIComponent(challenge.main_category)}/${encodeURIComponent(challenge.sub_category)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Find matching challenge in solutions
+            const solution = data.solutions?.find(s => s.id === challenge.id);
+            if (solution && solution.submission_id) {
+                // User has attempted this - show solution
+                window.location.href = `/submission/${solution.submission_id}/view`;
+            } else {
+                // User hasn't attempted - show challenge page
+                window.location.href = `/challenge?challenge_id=${challenge.id}`;
+            }
+        })
+        .catch(() => {
+            // If check fails, just go to challenge page
+            window.location.href = `/challenge?challenge_id=${challenge.id}`;
+        });
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initialize: Load subcategories on page load
+    loadSubcategories();
+})();
+</script>
+
+{% endblock %}

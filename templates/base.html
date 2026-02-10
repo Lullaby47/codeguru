@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CodeGuru</title>
+
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --border: #3e3e3e;
+            --muted: #999;
+            --green: #00ff66;
+            --yellow: #ffd84d;
+            --card-bg: #252526;
+            --text: #cccccc;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+        }
+
+        /* =========================
+           NAV BAR
+        ========================= */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: bold;
+            opacity: 0.9;
+            user-select: none;
+        }
+
+        .nav-quote {
+            margin-left: 18px;
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            user-select: none;
+        }
+
+        .nav-quote:hover {
+            color: var(--yellow);
+        }
+
+        /* =========================
+           LEFT ICONS
+        ========================= */
+        .nav-left {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* =========================
+           USER PROFILE ICON
+        ========================= */
+        .user-profile-icon {
+            cursor: pointer;
+            padding: 6px 12px;
+            background: rgba(0, 255, 102, 0.1);
+            border: 1px solid rgba(0, 255, 102, 0.3);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .user-profile-icon:hover {
+            background: rgba(0, 255, 102, 0.2);
+            border-color: rgba(0, 255, 102, 0.5);
+            transform: scale(1.05);
+        }
+
+        .profile-level {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--green);
+            letter-spacing: 0.5px;
+        }
+
+        /* =========================
+           CONGRATULATIONS MODAL
+        ========================= */
+        .congrats-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+            cursor: pointer;
+        }
+
+        .congrats-modal {
+            background: linear-gradient(135deg, #252526 0%, #2d2d30 100%);
+            border: 2px solid var(--green);
+            border-radius: 20px;
+            padding: 40px 50px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 255, 102, 0.3);
+            animation: slideUp 0.4s ease;
+            cursor: default;
+        }
+
+        .congrats-modal h1 {
+            font-size: 36px;
+            margin: 0 0 10px 0;
+            color: var(--green);
+        }
+
+        .congrats-modal p {
+            font-size: 18px;
+            color: #ccc;
+            margin: 10px 0;
+        }
+
+        .congrats-level {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--yellow);
+            margin: 20px 0;
+        }
+
+        .congrats-hint {
+            font-size: 12px;
+            color: #777;
+            margin-top: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* =========================
+           USER PROFILE MODAL
+        ========================= */
+        .profile-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+            cursor: pointer;
+        }
+
+        .profile-modal {
+            background: linear-gradient(135deg, #252526 0%, #2d2d30 100%);
+            border: 2px solid var(--green);
+            border-radius: 20px;
+            padding: 40px 50px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 255, 102, 0.3);
+            animation: slideUp 0.4s ease;
+            cursor: default;
+        }
+
+        .profile-modal h2 {
+            font-size: 28px;
+            margin: 0 0 20px 0;
+            color: var(--green);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .profile-stat {
+            background: rgba(0, 255, 102, 0.1);
+            border: 1px solid rgba(0, 255, 102, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .profile-stat-label {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .profile-stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--green);
+        }
+
+
+        .profile-hint {
+            font-size: 12px;
+            color: #777;
+            margin-top: 20px;
+        }
+
+        /* =========================
+           CENTER LOGO
+        ========================= */
+        .nav-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            cursor: pointer;
+            color: var(--green);
+            animation: blinkIdle 1.3s infinite;
+        }
+
+        .nav-center:hover {
+            animation: none;
+            opacity: 1;
+        }
+
+        @keyframes blinkIdle {
+            0%, 45% { opacity: 0.25; }
+            50%, 100% { opacity: 1; }
+        }
+
+        /* =========================
+           RIGHT ICONS
+        ========================= */
+        .nav-right {
+            margin-left: auto;
+            display: flex;
+            gap: 26px;
+            align-items: center;
+        }
+
+        .nav-item {
+            font-size: 18px;
+            opacity: 0.65;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            user-select: none;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 18px;
+        }
+
+        .nav-item:hover {
+            opacity: 1;
+        }
+
+        /* Challenge icon special styling */
+        .nav-item.challenge-icon {
+            font-size: 20px;
+            color: #ff4444;
+            text-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        .nav-item.challenge-icon:hover {
+            text-shadow: 0 0 12px rgba(255, 68, 68, 0.9), 0 0 20px rgba(255, 68, 68, 0.4);
+            transform: scale(1.1);
+        }
+
+        /* =========================
+           🛣️ JOURNEY ICON (ROAD)
+        ========================= */
+        .journey-icon {
+            font-family: monospace;
+            font-size: 16px;          /* match visual weight */
+            letter-spacing: -3px;     /* pull road together */
+            color: #666;
+            transition: all 0.2s ease;
+        }
+
+        .journey-icon span {
+            color: var(--green);
+            opacity: 0.85;
+        }
+
+        .journey-icon:hover {
+            color: var(--green);
+            text-shadow:
+                0 0 6px rgba(0,255,102,0.35),
+                0 0 14px rgba(0,255,102,0.15);
+        }
+
+        /* =========================
+           DASHBOARD ICON – BLUE SQUARE GLOW
+           ========================= */
+        .dashboard-icon {
+            font-family: monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #4da6ff;
+            text-shadow: 0 0 8px rgba(77,166,255,0.9);
+        }
+
+        .dashboard-icon span {
+            display: inline-block;
+        }
+
+        /* =========================
+           PAGE CONTENT
+        ========================= */
+        .page {
+            width: 100%;
+            padding: 24px 20px;
+            box-sizing: border-box;
+        }
+
+        .with-nav {
+            padding-top: 80px;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+{% set hide_nav = request.url.path in ['/login', '/signup'] %}
+
+{% if not hide_nav %}
+<div class="nav">
+
+    <div class="nav-left">
+        <!-- User Profile Icon -->
+        <div class="user-profile-icon" id="userProfileIcon" title="Your Profile" 
+             data-user-level="{% if user %}{{ user.level }}{% else %}1{% endif %}"
+             data-username="{% if user %}{{ user.username }}{% else %}Guest{% endif %}"
+             data-email="{% if user %}{{ user.email }}{% else %}guest@example.com{% endif %}"
+             data-streak="{% if user %}{{ user.streak }}{% else %}0{% endif %}"
+             data-verified="{% if user %}{{ 'Yes' if user.is_verified else 'No' }}{% else %}No{% endif %}">
+            <div class="profile-level">{% if user %}{{ user.username }}{% else %}Guest{% endif %}</div>
+        </div>
+
+        <!-- Dashboard -->
+        <a href="/dashboard" title="Dashboard">
+            <div class="nav-item dashboard-icon">
+                <span>▮</span><span>▮</span><span>▮</span>
+            </div>
+        </a>
+    </div>
+
+    <div class="nav-quote" id="navQuote">
+        Small progress is still progress.
+    </div>
+
+    <a href="/dashboard">
+        <div class="nav-center">CODEGURU</div>
+    </a>
+
+    <div class="nav-right">
+        <!-- Admin Links -->
+        {% if user %}
+            {% set is_main_admin = user.id == 1 %}
+            {% set is_co_admin = user.role == "coadmin" %}
+            {% set is_admin = is_main_admin or is_co_admin %}
+            
+            {% if is_admin %}
+            <!-- Create Challenge (all admins) -->
+            <a href="/admin/challenge/new" title="Create Challenge">
+                <div class="nav-item" style="color: #00ff66; font-size: 18px;">➕</div>
+            </a>
+            
+            <!-- Promote User (main admin only) -->
+            {% if is_main_admin %}
+            <a href="/admin/users" title="Promote User">
+                <div class="nav-item" style="color: #ffc800; font-size: 18px;">👤</div>
+            </a>
+            {% endif %}
+            {% endif %}
+        {% endif %}
+
+        <!-- Today's Challenge -->
+        <a href="/challenge" title="Today's Challenge">
+            <div class="nav-item challenge-icon">⌬⌬</div>
+        </a>
+
+        <!-- Journey -->
+        <a href="/journey" title="Journey">
+            <div class="nav-item journey-icon">
+                ┃<span>┊┊┊</span>┃
+            </div>
+        </a>
+
+        <!-- Logout -->
+        <a href="/logout" title="Logout">
+            <div class="nav-item">⏻</div>
+        </a>
+    </div>
+
+</div>
+{% endif %}
+
+<div class="page {% if not hide_nav %}with-nav{% endif %}">
+    {% block content %}{% endblock %}
+</div>
+
+<script>
+    const quotes = [
+        "Small progress is still progress.",
+        "You are not behind. You are building.",
+        "Consistency beats motivation.",
+        "Every expert was once confused.",
+        "This is hard because it matters.",
+        "Stay. Learn. Repeat.",
+        "The bug is part of the lesson.",
+        "One commit closer than yesterday."
+    ];
+
+    let qIndex = Math.floor(Math.random() * quotes.length);
+    const quoteEl = document.getElementById("navQuote");
+
+    function setQuote() {
+        if (quoteEl) quoteEl.textContent = quotes[qIndex];
+    }
+
+    function nextQuote() {
+        qIndex = (qIndex + 1) % quotes.length;
+        setQuote();
+    }
+
+    setQuote();
+    setInterval(nextQuote, 300000);
+    if (quoteEl) quoteEl.addEventListener("click", nextQuote);
+
+    // User Profile Icon Click Handler
+    const profileIcon = document.getElementById("userProfileIcon");
+    if (profileIcon) {
+        profileIcon.addEventListener("click", function(e) {
+            e.stopPropagation();
+            showProfileModal();
+        });
+    }
+
+    // Show Profile Modal
+    function showProfileModal() {
+        const profileIcon = document.getElementById("userProfileIcon");
+        if (!profileIcon) return;
+
+        const userLevel = profileIcon.getAttribute("data-user-level") || "1";
+        const username = profileIcon.getAttribute("data-username") || "Guest";
+        const email = profileIcon.getAttribute("data-email") || "guest@example.com";
+        const streak = profileIcon.getAttribute("data-streak") || "0";
+        const verified = profileIcon.getAttribute("data-verified") || "No";
+
+        const overlay = document.createElement("div");
+        overlay.className = "profile-overlay";
+        overlay.innerHTML = `
+            <div class="profile-modal" onclick="event.stopPropagation()">
+                <h2>${username}</h2>
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <div class="profile-stat-label">Level</div>
+                        <div class="profile-stat-value">${userLevel}</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-label">Streak</div>
+                        <div class="profile-stat-value">${streak}</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-label">Verified</div>
+                        <div class="profile-stat-value" style="font-size: 20px; margin-top: 10px;">${verified === 'Yes' ? '✓' : '✗'}</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-label">Status</div>
+                        <div class="profile-stat-value" style="font-size: 18px; margin-top: 10px;">Active</div>
+                    </div>
+                </div>
+                <div class="profile-hint">Click anywhere to close</div>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        // Dismiss on click anywhere
+        overlay.addEventListener("click", function() {
+            overlay.style.animation = "fadeOut 0.3s ease";
+            setTimeout(() => overlay.remove(), 300);
+        });
+    }
+
+    // Check for level up from URL parameter or session storage
+    function showCongratulations(newLevel, oldLevel) {
+        const overlay = document.createElement("div");
+        overlay.className = "congrats-overlay";
+        overlay.innerHTML = `
+            <div class="congrats-modal" onclick="event.stopPropagation()">
+                <h1>🎉 Congratulations!</h1>
+                <p>You've been promoted!</p>
+                <div class="congrats-level">Level ${oldLevel} → ${newLevel}</div>
+                <p>Keep up the great work!</p>
+                <div class="congrats-hint">Click anywhere to continue</div>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        // Dismiss on click anywhere
+        overlay.addEventListener("click", function() {
+            overlay.style.animation = "fadeOut 0.3s ease";
+            setTimeout(() => overlay.remove(), 300);
+            // Remove from session storage
+            sessionStorage.removeItem("levelUp");
+        });
+    }
+
+    // Check URL parameters for level up
+    const urlParams = new URLSearchParams(window.location.search);
+    const levelUp = urlParams.get("level_up") === "true";
+    const newLevel = urlParams.get("new_level");
+    const oldLevel = urlParams.get("old_level");
+    
+    if (levelUp && newLevel && oldLevel) {
+        showCongratulations(parseInt(newLevel), parseInt(oldLevel));
+        // Clean URL
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+</script>
+
+</body>
+</html>

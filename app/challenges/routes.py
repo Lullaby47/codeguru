@@ -1,0 +1,1255 @@
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func, distinct, or_
+from datetime import date
+import io
+import contextlib
+import random
+import ast
+import re
+import logging
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+from app.core.config import OPENAI_API_KEY
+
+# Configure logger to output to console
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(levelname)s: [MENTOR HINT] %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.propagate = False
+
+# Also use print for immediate visibility
+def debug_print(msg):
+    print(f"[MENTOR HINT DEBUG] {msg}", flush=True)
+
+from app.db.session import get_db
+from app.challenges.models import Challenge
+from app.submissions.models import Submission, SubmissionInsight
+from app.auth.models import User
+from app.core.deps import get_current_user, get_admin
+
+router = APIRouter(prefix="/challenge", tags=["challenge"])
+
+
+# ======================================================
+# MENTOR HINT GENERATOR
+# ======================================================
+def should_trigger_mentor_hint(attempt_number: int) -> bool:
+    """
+    Check if mentor hint should trigger based on attempt number.
+    STRICT RULE: Triggers on 3, 5, 7, 8, 10, and EVERY attempt AFTER 10.
+    Do NOT use modulo logic or "multiple of X" rules.
+    """
+    if attempt_number in [3, 5, 7, 8, 10]:
+        return True
+    if attempt_number > 10:  # EVERY attempt after 10
+        return True
+    return False
+
+
+def generate_mentor_hint_openai(code: str, description: str, expected_output: str, user_output: str, attempt_number: int, has_error: bool = False) -> str:
+    """
+    Generate mentor hint using OpenAI.
+    
+    Type A: Code does NOT run or throws syntax/runtime error → STRUCTURE or SYNTAX-LEVEL hint
+    Type B: Code runs and produces output but output is wrong → LOGIC-LEVEL hint
+    
+    Returns None if OpenAI fails or response violates rules.
+    """
+    debug_print(f"OpenAI function called - attempt_number={attempt_number}, code_length={len(code)}, description_length={len(description)}")
+    logger.info(f"[MENTOR HINT] OpenAI function called - attempt_number={attempt_number}, code_length={len(code)}, description_length={len(description)}")
+    
+    if not OPENAI_AVAILABLE:
+        debug_print("OpenAI module not available")
+        logger.warning("[MENTOR HINT] OpenAI module not available")
+        return None
+    
+    if not OPENAI_API_KEY or OPENAI_API_KEY == "":
+        debug_print("OpenAI API key not set")
+        logger.warning("[MENTOR HINT] OpenAI API key not set")
+        return None
+    
+    try:
+        debug_print("Calling OpenAI API...")
+        logger.info("[MENTOR HINT] Calling OpenAI API...")
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        
+        # Determine hint type
+        if has_error:
+            hint_context = "The code does NOT run or throws a syntax/runtime error. The interpreter stops before execution."
+        else:
+            hint_context = "The code runs and produces output, but the output does NOT match what is expected."
+        
+        # Determine progressive reveal strategy based on attempt number
+        if attempt_number == 3:
+            reveal_level = "ATTEMPT_3"
+            reveal_instructions = """ATTEMPT 3 - Describe what kind of thing is wrong:
+- Describe what kind of thing is wrong
+- No fix, no code
+- Just identify the category of the problem
+- Example: "This is a structural issue" or "The interpreter can't distinguish between command and data"
+"""
+        elif attempt_number == 5:
+            reveal_level = "ATTEMPT_5"
+            reveal_instructions = """ATTEMPT 5 - Name the missing element explicitly:
+- Name the missing element explicitly
+- Example: "You're missing the quote" or "The parentheses are missing"
+- Still no code
+- Be direct about what's missing
+"""
+        elif attempt_number == 7:
+            reveal_level = "ATTEMPT_7"
+            reveal_instructions = """ATTEMPT 7 - Suggest a partial correction:
+- Suggest a partial correction
+- Example: "The text needs to be treated as text" or "This part needs to be wrapped"
+- No full syntax
+- Point to what needs to happen, not how exactly
+"""
+        elif attempt_number == 8:
+            reveal_level = "ATTEMPT_8"
+            reveal_instructions = """ATTEMPT 8 - Reveal ONE corrected line OR ONE corrected fragment:
+- Reveal ONE corrected line OR ONE corrected fragment
+- Never the whole program
+- Never more than one line
+- Show exactly one line of corrected code
+- Example: Show just the corrected print statement, or just the corrected variable assignment
+"""
+        elif attempt_number == 10:
+            reveal_level = "ATTEMPT_10"
+            reveal_instructions = """ATTEMPT 10 - Reveal another missing piece:
+- Reveal another missing piece
+- Still incomplete overall solution
+- Show another one-line fragment or correction
+- Continue building the solution piece by piece
+"""
+        else:  # After attempt 10
+            reveal_level = "ATTEMPT_10_PLUS"
+            reveal_instructions = """AFTER ATTEMPT 10 - Continue dropping remaining lines:
+- Mentor may continue dropping remaining lines
+- One line per hint
+- Never paste the entire solution together
+- Show one more corrected line or fragment
+- Keep the solution incomplete so learner must think
+"""
+        
+        prompt = f"""You are a mentor on a coding practice platform. Your role is to guide learners by revealing the solution gradually, in fragments across attempts.
+
+CORE PHILOSOPHY:
+The mentor IS allowed to give the solution, but ONLY in fragments, spread across attempts.
+Never reveal the full solution in one hint.
+
+PROGRESSIVE SOLUTION RULE (MANDATORY):
+The mentor must reveal the solution gradually, based on attempt number.
+The learner should feel: "I can finish this myself now."
+
+WHAT YOU MUST DO:
+
+- Reveal the solution piece by piece across attempts
+- Show one line or fragment at a time (starting from attempt 8)
+- Speak like a calm senior engineer
+- Be direct and helpful, but never give everything at once
+- Let the learner combine multiple hints to solve it
+
+STYLE REQUIREMENTS:
+- Calm and direct
+- 1-2 sentences maximum
+- Instructional but partial
+- No emojis, no praise, no scolding
+- Sound like a senior engineer helping a colleague
+
+GOOD MENTOR HINT EXAMPLES BY ATTEMPT:
+
+ATTEMPT 3 - Describe what kind of thing is wrong:
+- "This is a structural issue — the interpreter can't distinguish between command and data."
+- "The problem is with how the message is presented to the interpreter."
+
+ATTEMPT 5 - Name the missing element explicitly:
+- "You're missing the quote marks around the text."
+- "The parentheses are missing around the function call."
+
+ATTEMPT 7 - Suggest a partial correction:
+- "The text needs to be treated as text, not as a command."
+- "This part needs to be wrapped to mark it as data."
+
+ATTEMPT 8 - Reveal ONE corrected line:
+- "This line needs quotes — fix that first: print(\"Hello World\")"
+- "Try this: print('Hello World')"
+
+ATTEMPT 10 - Reveal another missing piece:
+- "Now add the closing parenthesis here: )"
+- "The next line should be: x = 5"
+
+AFTER 10 - Continue dropping remaining lines:
+- "Now the structure is right, but one line still isn't. Try: y = 10"
+- "One more piece: z = x + y"
+
+BAD HINT EXAMPLES (FORBIDDEN - DO NOT DO THIS):
+- "Here's the full working code: [entire solution]"
+- "Copy this: [multiple lines]"
+- "Here is the solution"
+- Showing multiple corrected lines in one hint
+- Outputting the entire correct program at once
+
+--------------------------------------------------
+PROGRESSIVE REVEAL STRATEGY (CRITICAL):
+Current attempt: {attempt_number}
+Reveal level: {reveal_level}
+
+{reveal_instructions}
+
+ABSOLUTE LIMITS (applies to ALL attempt levels):
+The mentor must NEVER:
+- Output the full correct code at once
+- Output multiple corrected lines in one hint
+- Say "Here is the solution"
+- Remove the learner's need to think
+
+SUCCESS CONDITION:
+If the learner solves the problem by combining multiple mentor hints,
+the mentor did the job correctly.
+
+MENTOR VOICE:
+Speak like a calm senior engineer.
+Good: "This line needs quotes — fix that first."
+Good: "Now the structure is right, but one line still isn't."
+Good: "Try adjusting just this part next."
+
+--------------------------------------------------
+CONTEXT:
+{hint_context}
+
+Challenge description: {description}
+Expected output: {expected_output}
+User's actual output: {user_output}
+User's code:
+{code}
+Attempt number: {attempt_number}
+
+Respond with ONLY the hint (1-2 sentences max), or return NOTHING if you cannot give a hint without violating rules."""
+
+        # Adjust temperature based on reveal level (more creative for early attempts, more focused for later attempts)
+        if reveal_level == "ATTEMPT_3":
+            temperature = 0.5  # Balanced for describing problem type
+        elif reveal_level == "ATTEMPT_5":
+            temperature = 0.4  # More focused for naming missing elements
+        elif reveal_level == "ATTEMPT_7":
+            temperature = 0.4  # Focused for partial corrections
+        else:  # ATTEMPT_8, ATTEMPT_10, ATTEMPT_10_PLUS
+            temperature = 0.3  # Very focused for showing code fragments
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": f"You are a mentor on a coding practice platform. You reveal solutions gradually in fragments across attempts. Current attempt: {attempt_number} ({reveal_level}). You speak like a calm senior engineer. You show one line or fragment at a time (starting from attempt 8), never the full solution. The learner should feel they can finish it themselves by combining your hints."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,  # Increased to allow code fragments
+            temperature=temperature
+        )
+        
+        hint = response.choices[0].message.content.strip()
+        debug_print(f"OpenAI response received: {hint[:100]}...")
+        logger.info(f"[MENTOR HINT] OpenAI response received: {hint[:100]}...")
+        
+        # Validate response: must be one sentence, max 20 words, no code blocks
+        if not hint:
+            debug_print("OpenAI returned empty hint")
+            logger.warning("[MENTOR HINT] OpenAI returned empty hint")
+            return None
+        
+        # Validation: Reject hints that show the FULL solution or multiple lines at once
+        # ALLOW: Single line fragments (from attempt 8+), code snippets, partial solutions
+        # REJECT: Full solutions, multiple lines in one hint, "here is the solution"
+        
+        hint_lower = hint.lower()
+        
+        # Reject if hint explicitly says it's giving the full solution
+        if "here is the solution" in hint_lower or "here's the solution" in hint_lower or "full solution" in hint_lower:
+            debug_print(f"Hint rejected - claims to give full solution")
+            logger.warning(f"[MENTOR HINT] Hint rejected - claims full solution: {hint}")
+            return None
+        
+        # Reject if hint contains code blocks (markdown code blocks suggest full code)
+        if "```" in hint:
+            debug_print(f"Hint rejected - contains code blocks (suggests full code)")
+            logger.warning(f"[MENTOR HINT] Hint rejected - contains code blocks: {hint}")
+            return None
+        
+        # Count newlines in hint - if more than 2-3 lines of code, likely showing too much
+        # Allow single line fragments, but reject multi-line solutions
+        code_line_count = hint.count('\n')
+        if code_line_count > 2:
+            # Check if it looks like multiple lines of actual code (not just text with line breaks)
+            if any(keyword in hint for keyword in ["print(", "def ", "for ", "if ", "while ", "return "]):
+                debug_print(f"Hint rejected - contains multiple lines of code ({code_line_count} lines)")
+                logger.warning(f"[MENTOR HINT] Hint rejected - multiple code lines: {hint}")
+                return None
+        
+        # Note: We do NOT reject hints for using words like:
+        # structure, interpreter, syntax, message, command, element, arrangement, clarity, definition, separation
+        # These words are ALLOWED and are part of good mentor guidance
+        
+        # We also do NOT reject hints that mention quotes conceptually
+        # Only reject if quotes are used to show actual code (which is caught by code_syntax_patterns above)
+        
+        # VALIDATION PHILOSOPHY:
+        # The mentor IS allowed to show code fragments (one line at a time from attempt 8+)
+        # The mentor IS allowed to name missing elements and suggest corrections
+        # The mentor is NOT allowed to show the full solution or multiple lines at once
+        
+        # If we got here, the hint passes validation
+        # It may show single line code fragments (from attempt 8+) - this is ALLOWED
+        # It may name missing elements explicitly (from attempt 5+) - this is ALLOWED
+        # It may show partial corrections (from attempt 7+) - this is ALLOWED
+        
+        # Check word count (max 40 words for 2 sentences)
+        word_count = len(hint.split())
+        if word_count > 40:
+            debug_print(f"Hint rejected - word count {word_count} exceeds 40")
+            logger.warning(f"[MENTOR HINT] Hint rejected - word count {word_count} exceeds 40")
+            return None
+        
+        # Check if it's more than 2 sentences (allow 1-2 sentences)
+        sentence_endings = hint.count('.') + hint.count('!') + hint.count('?')
+        if sentence_endings > 2:
+            debug_print(f"Hint rejected - too many sentences ({sentence_endings} > 2)")
+            logger.warning(f"[MENTOR HINT] Hint rejected - too many sentences ({sentence_endings} > 2)")
+            return None
+        
+        debug_print(f"Hint validated successfully: {hint}")
+        logger.info(f"[MENTOR HINT] Hint validated successfully: {hint}")
+        return hint
+        
+    except Exception as e:
+        # Log error but don't break the app if OpenAI is down
+        debug_print(f"OpenAI call failed: {str(e)}")
+        logger.error(f"[MENTOR HINT] OpenAI call failed: {str(e)}", exc_info=True)
+        return None
+
+
+def generate_mentor_hint(code: str, expected_output: str, execution_output: str, execution_error: str = None) -> str:
+    """
+    Generate a specific, technical mentor hint based on code analysis.
+    Returns None if no hint should be given.
+    
+    Priority 1-3: Static hints for syntax errors and basic issues (no OpenAI)
+    Priority 4: Bucket D cases use OpenAI (code executes, output exists, but wrong)
+    """
+    if not code or not code.strip():
+        return None
+    
+    code_stripped = code.strip()
+    
+    # Priority 1: Syntax errors (static analysis, no OpenAI)
+    if execution_error:
+        error_lower = execution_error.lower()
+        
+        # Missing quotes around strings
+        if "nameerror" in error_lower and "not defined" in error_lower:
+            undefined_match = re.search(r"name '([^']+)' is not defined", error_lower)
+            if undefined_match:
+                name = undefined_match.group(1)
+                if name and not re.search(r'[_\d]', name) and len(name) > 1:
+                    return f"Strings need quotes."
+        
+        # Missing parentheses
+        if "syntaxerror" in error_lower or "invalid syntax" in error_lower:
+            open_count = code.count("(")
+            close_count = code.count(")")
+            if open_count > close_count:
+                return "Missing closing parenthesis."
+            elif close_count > open_count:
+                return "Missing opening parenthesis."
+            elif "(" in code or ")" in code:
+                return "Something is missing inside the parentheses."
+        
+        # Indentation errors
+        if "indentationerror" in error_lower or "unexpected indent" in error_lower:
+            return "This line is indented too far."
+        
+        # Colon missing
+        if "expected ':'" in error_lower:
+            if any(keyword in code_stripped for keyword in ["if ", "for ", "while ", "def ", "else", "elif "]):
+                return "Missing colon after control statement."
+        
+        # For syntax errors, return static hint (no OpenAI)
+        return None
+    
+    # Priority 2: Missing print statement (static, no OpenAI)
+    if "print" not in code_stripped.lower():
+        if expected_output:
+            return "Try starting with: print("
+    
+    # Priority 3: Print statement issues (static, no OpenAI)
+    if "print(" in code_stripped:
+        print_matches = re.finditer(r'print\s*\((.*?)\)', code_stripped, re.DOTALL)
+        for match in print_matches:
+            content = match.group(1).strip()
+            if content and not (content.startswith('"') or content.startswith("'") or content.startswith('f"')):
+                if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', content):
+                    return "Strings need quotes."
+        
+        if not execution_output.strip() and expected_output.strip():
+            return "Check what you're printing."
+    
+    # Priority 4: Bucket D - Code executes, output exists, but wrong (use OpenAI)
+    # This case is handled in submission endpoints, not here
+    # This function returns None for Bucket D, OpenAI is called directly from endpoints
+    return None
+
+
+# ======================================================
+# COUNT SOLVED CHALLENGES FOR A LEVEL
+# ======================================================
+@router.get("/solved-count/{level}")
+def get_solved_count(
+    level: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Count distinct challenges solved correctly by user at a specific level."""
+    from sqlalchemy import distinct
+
+    solved_count = (
+        db.query(func.count(distinct(Submission.challenge_id)))
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(
+            Submission.user_id == user.id,
+            Submission.is_correct == 1,
+            Challenge.level == level,
+        )
+        .scalar()
+    )
+
+    return {"count": solved_count or 0}
+
+# ======================================================
+# GET NEXT UNSOLVED CHALLENGE FOR A LEVEL
+# ======================================================
+@router.get("/next/{level}")
+def get_next_challenge(
+    level: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get the next unsolved challenge for user at a specific level."""
+    from sqlalchemy import distinct
+
+    # Get all challenges at this level (only pool challenges, not daily challenges)
+    all_challenges = (
+        db.query(Challenge)
+        .filter(
+            Challenge.level == level,
+            Challenge.challenge_date.is_(None)  # Only pool challenges
+        )
+        .all()
+    )
+
+    # Get all challenge IDs the user has solved correctly at this level
+    solved_challenge_ids = (
+        db.query(distinct(Submission.challenge_id))
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(
+            Submission.user_id == user.id,
+            Submission.is_correct == 1,
+            Challenge.level == level,
+        )
+        .all()
+    )
+    solved_ids = {row[0] for row in solved_challenge_ids}
+
+    # Filter to unsolved challenges
+    unsolved_challenges = [ch for ch in all_challenges if ch.id not in solved_ids]
+
+    if unsolved_challenges:
+        # Group unsolved challenges by category/subcategory
+        challenges_by_category = {}
+        for ch in unsolved_challenges:
+            key = (ch.main_category or "", ch.sub_category or "")
+            if key not in challenges_by_category:
+                challenges_by_category[key] = []
+            challenges_by_category[key].append(ch)
+
+        # If there are multiple categories, randomize which category to pick from
+        # Then randomize within that category
+        if challenges_by_category:
+            selected_category = random.choice(list(challenges_by_category.keys()))
+            category_challenges = challenges_by_category[selected_category]
+            selected_challenge = random.choice(category_challenges)
+            return {"challenge_id": selected_challenge.id}
+
+        # Fallback: just randomize all unsolved challenges
+        selected_challenge = random.choice(unsolved_challenges)
+        return {"challenge_id": selected_challenge.id}
+
+    # All challenges at this level are solved - check if we can level up
+    solved_count = len(solved_ids)
+    if solved_count >= level:
+        # User can level up - find challenges of next level
+        next_level = level + 1
+        next_level_challenges = (
+            db.query(Challenge)
+            .filter(
+                Challenge.level == next_level,
+                Challenge.challenge_date.is_(None)  # Only pool challenges
+            )
+            .all()
+        )
+
+        if next_level_challenges:
+            # Group challenges by category/subcategory
+            challenges_by_category = {}
+            for ch in next_level_challenges:
+                key = (ch.main_category or "", ch.sub_category or "")
+                if key not in challenges_by_category:
+                    challenges_by_category[key] = []
+                challenges_by_category[key].append(ch)
+
+            # Randomize category, then randomize within category
+            if challenges_by_category:
+                selected_category = random.choice(list(challenges_by_category.keys()))
+                category_challenges = challenges_by_category[selected_category]
+                selected_challenge = random.choice(category_challenges)
+            else:
+                selected_challenge = random.choice(next_level_challenges)
+
+            # Update user level
+            user.level = next_level
+            db.add(user)
+            db.commit()
+            return {"challenge_id": selected_challenge.id}
+
+    # No more challenges available
+    return {"challenge_id": None}
+
+# ======================================================
+# GET SUBCATEGORIES FOR A MAIN CATEGORY
+# ======================================================
+@router.get("/subcategories/{main_category}")
+def get_subcategories(main_category: str, db: Session = Depends(get_db)):
+    """Get ALL subcategories (Skill Stages) - predefined list from admin page in specific order."""
+    from sqlalchemy import func
+
+    # Predefined Skill Stages in the exact order specified
+    predefined_stages = [
+        "Fundamental",
+        "Amateur",
+        "Intermediate",
+        "Advanced",
+        "Expert",
+        "Builder",
+        "Master"
+    ]
+
+    # Get all distinct subcategories that exist in challenges for this main category
+    # Use case-insensitive comparison to ensure we get all matches
+    db_subcategories = (
+        db.query(Challenge.sub_category)
+        .filter(func.lower(Challenge.main_category) == main_category.lower())
+        .distinct()
+        .all()
+    )
+
+    # Extract subcategory names from database
+    existing_subs = [sub[0] for sub in db_subcategories if sub[0] and sub[0].strip()]
+
+    # Start with predefined stages in order
+    result = []
+    seen = set()
+
+    # Add predefined stages first in the specified order
+    for stage in predefined_stages:
+        if stage not in seen:
+            result.append(stage)
+            seen.add(stage)
+
+    # Add any additional subcategories from database that aren't in predefined list
+    for sub in existing_subs:
+        if sub not in seen:
+            result.append(sub)
+            seen.add(sub)
+
+    # Return subcategories in the specified order
+    return {"subcategories": result}
+
+# ======================================================
+# GET SOLUTIONS/CHALLENGES FOR A SUBCATEGORY
+# ======================================================
+@router.get("/solutions/{main_category}/{sub_category}")
+def get_solutions(
+    main_category: str,
+    sub_category: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get all ATTEMPTED challenges for a subcategory (only questions user has tried)."""
+    from app.submissions.models import Submission
+
+    # Get all submissions for this user in this category/subcategory
+    attempted_submissions = (
+        db.query(Submission, Challenge)
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(
+            Submission.user_id == user.id,
+            Challenge.main_category == main_category,
+            Challenge.sub_category == sub_category
+        )
+        .order_by(Submission.created_at.desc())
+        .all()
+    )
+
+    # Group by challenge_id to get the latest submission for each challenge
+    challenge_submissions = {}
+    for submission, challenge in attempted_submissions:
+        challenge_id = challenge.id
+        if challenge_id not in challenge_submissions:
+            challenge_submissions[challenge_id] = (submission, challenge)
+
+    solutions = []
+    for challenge_id, (submission, challenge) in challenge_submissions.items():
+        # Get the latest correct submission if exists
+        correct_submission = (
+            db.query(Submission)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.challenge_id == challenge_id,
+                Submission.is_correct == 1
+            )
+            .order_by(Submission.created_at.desc())
+            .first()
+        )
+
+        # Only add to solutions if there's a correct submission
+        if correct_submission:
+            solutions.append({
+                "id": challenge.id,
+                "title": challenge.title,
+                "level": challenge.level,
+                "stage_order": challenge.stage_order,
+                "submission_id": correct_submission.id,
+                "completed": True,
+            })
+
+    # Sort by stage_order
+    solutions.sort(key=lambda x: x["stage_order"])
+
+    return {"solutions": solutions}
+
+# ======================================================
+# GET TODAY'S CHALLENGE
+# ======================================================
+@router.get("/today")
+def get_today_challenge(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get today's challenge, but only if user's level is sufficient."""
+    challenge = (
+        db.query(Challenge)
+        .filter(Challenge.challenge_date == date.today())
+        .first()
+    )
+
+    if not challenge:
+        return None
+
+    # Allow access if challenge level is at user's level OR next level (for Learn More)
+    if challenge.level > user.level + 1:
+        return None  # Don't show challenge if it's more than one level ahead
+
+    return {
+        "id": challenge.id,
+        "level": challenge.level,
+        "title": challenge.title,
+        "description": challenge.description,
+        "main_category": challenge.main_category or "",
+        "sub_category": challenge.sub_category or "",
+        "stage_order": challenge.stage_order or 1,
+        "expected_output": challenge.expected_output or "",
+    }
+
+# ======================================================
+# TEST CODE EXECUTION (FOR TERMINAL OUTPUT)
+# ======================================================
+@router.post("/test-code")
+def test_code(
+    code: str = Form(...),
+    user: User = Depends(get_current_user),
+):
+    """Execute code and return output without saving submission."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    output = ""
+    error = None
+
+    try:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            exec(code, {})
+        output = buffer.getvalue().strip()
+    except Exception as e:
+        error = str(e)
+
+    return {
+        "output": output,
+        "error": error
+    }
+
+# ======================================================
+# SEARCH CHALLENGES  ✅ MOVED ABOVE /{challenge_id} (ONLY CHANGE)
+# ======================================================
+@router.get("/search")
+def search_challenges(
+    q: str = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Search ONLY challenges that the current user has attempted."""
+    if not q or not q.strip():
+        return {"challenges": []}
+
+    # Convert search term to lowercase for case-insensitive matching
+    search_term = q.strip()
+    search_term_lower = f"%{search_term.lower()}%"
+
+    # Only include challenges that THIS USER has attempted (any submission)
+    # Join with Submission and filter by user_id, then apply the text search.
+    challenges_query = (
+        db.query(Challenge)
+        .join(Submission, Submission.challenge_id == Challenge.id)
+        .filter(Submission.user_id == user.id)
+        .filter(
+            or_(
+                func.lower(Challenge.title).like(search_term_lower),
+                func.lower(Challenge.description).like(search_term_lower),
+                func.lower(func.coalesce(Challenge.expected_output, "")).like(search_term_lower),
+                func.lower(func.coalesce(Challenge.main_category, "")).like(search_term_lower),
+                func.lower(func.coalesce(Challenge.sub_category, "")).like(search_term_lower),
+            )
+        )
+        .order_by(Challenge.level.asc(), Challenge.id.desc())
+    )
+
+    # Distinct challenges (user might have many submissions for same challenge)
+    challenges = challenges_query.distinct(Challenge.id).limit(50).all()
+
+    result = []
+    for ch in challenges:
+        result.append({
+            "id": ch.id,
+            "level": ch.level,
+            "title": ch.title,
+            "description": ch.description or "",
+            "main_category": ch.main_category or "",
+            "sub_category": ch.sub_category or "",
+            "expected_output": ch.expected_output or "",
+        })
+
+    return {"challenges": result}
+
+# ======================================================
+# GET CHALLENGE BY ID
+# ======================================================
+@router.get("/{challenge_id}")
+def get_challenge_by_id(
+    challenge_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get a specific challenge by ID."""
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+
+    # Allow access if challenge level is at user's level OR next level (for Learn More)
+    if challenge.level > user.level + 1:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level is {user.level}."
+        )
+
+    return {
+        "id": challenge.id,
+        "level": challenge.level,
+        "title": challenge.title,
+        "description": challenge.description,
+        "main_category": challenge.main_category or "",
+        "sub_category": challenge.sub_category or "",
+        "stage_order": challenge.stage_order or 1,
+        "expected_output": challenge.expected_output or "",
+    }
+
+# ======================================================
+# SUBMIT CHALLENGE (TODAY'S CHALLENGE)
+# ======================================================
+@router.post("/submit")
+def submit_challenge(
+    code: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    i_dont_know: bool = Form(False),  # New flag for "I don't know" option
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    challenge = (
+        db.query(Challenge)
+        .filter(Challenge.challenge_date == date.today())
+        .first()
+    )
+
+    if not challenge:
+        raise HTTPException(status_code=400, detail="No challenge today")
+
+    # ------------------------------------
+    # FIRST EVER SUBMISSION (GLOBAL)
+    # ------------------------------------
+    first_time_global = False
+    has_any_submission = (
+        db.query(Submission)
+        .filter(Submission.user_id == user.id)
+        .first()
+    )
+
+    if not has_any_submission:
+        first_time_global = True
+        user.level = 1  # Make sure the user starts at level 1
+        db.add(user)
+
+    # ------------------------------------
+    # ATTEMPT COUNT
+    # ------------------------------------
+    attempt_number = (
+        db.query(Submission)
+        .filter(
+            Submission.user_id == user.id,
+            Submission.challenge_id == challenge.id,
+        )
+        .count()
+        + 1
+    )
+
+    is_retry = 1 if attempt_number > 1 else 0
+
+    # ------------------------------------
+    # RUN USER CODE
+    # ------------------------------------
+    output = ""
+    is_correct = 0
+
+    try:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            exec(code, {})
+
+        output = buffer.getvalue().strip()
+
+        if output == challenge.expected_output.strip():
+            is_correct = 1
+
+    except Exception as e:
+        output = f"Error: {str(e)}"
+        is_correct = 0
+
+    # ------------------------------------
+    # HANDLE "I DON'T KNOW"
+    # ------------------------------------
+    if i_dont_know:
+        return {"status": "failed", "message": "Try again tomorrow or use hints!"}
+
+    # ------------------------------------
+    # SAVE SUBMISSION
+    # ------------------------------------
+    submission = Submission(
+        user_id=user.id,
+        challenge_id=challenge.id,
+        code=code,
+        is_correct=is_correct,
+        is_first_submission=1 if first_time_global else 0,
+        attempt_number=attempt_number,
+        is_retry=is_retry,
+    )
+
+    db.add(submission)
+    db.commit()
+    db.refresh(submission)
+
+    # ------------------------------------
+    # 🧠 CREATE EMPTY INSIGHT (KEY STEP)
+    # ------------------------------------
+    insight = SubmissionInsight(
+        submission_id=submission.id,
+        concepts="",
+        learning_points="",
+        real_world_use="",
+        improvement_hint="",
+    )
+
+    db.add(insight)
+    db.commit()
+
+    # ------------------------------------
+    # 🎯 MENTOR HINT (on attempts 3, 5, 7, 8, 10, or ≥ 11)
+    # ------------------------------------
+    mentor_hint = None
+    if is_correct == 0:  # Only check for wrong attempts
+        # Check if we should trigger hint based on attempt number
+        if should_trigger_mentor_hint(attempt_number):
+            debug_print(f"Attempt {attempt_number} detected - checking for mentor hint...")
+            # Check if code has error or produces wrong output
+            has_error = output.startswith("Error:")
+            has_output = output and output.strip() and not has_error
+            has_expected = challenge.expected_output and challenge.expected_output.strip()
+            
+            debug_print(f"Mentor hint check - has_error={has_error}, has_output={has_output}, has_expected={has_expected}")
+            debug_print(f"  Output: '{output[:100] if output else None}'")
+            debug_print(f"  Expected: '{challenge.expected_output[:100] if challenge.expected_output else None}'")
+            
+            # Trigger hint for:
+            # Type A: Syntax/runtime errors (has_error = True)
+            # Type B: Code runs but output is wrong (has_error = False, has_output = True, output != expected)
+            if has_error or (has_output and has_expected and output.strip() != challenge.expected_output.strip()):
+                debug_print("Conditions met - calling OpenAI...")
+                mentor_hint = generate_mentor_hint_openai(
+                    code=code,
+                    description=challenge.description or "",
+                    expected_output=challenge.expected_output or "",
+                    user_output=output,
+                    attempt_number=attempt_number,
+                    has_error=has_error
+                )
+                debug_print(f"OpenAI returned: {mentor_hint}")
+            else:
+                debug_print(f"Conditions not met - has_error={has_error}, has_output={has_output}, output matches={output.strip() == challenge.expected_output.strip() if output and challenge.expected_output else False}")
+        else:
+            debug_print(f"Attempt {attempt_number} - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
+
+    # Level progression: follow the rule (solved_count >= current_level)
+    # Only check if submission is correct
+    level_up = False
+    old_level = user.level
+    if is_correct:
+        current_level = user.level
+        # Count distinct challenges solved correctly at user's current level
+        solved_count = (
+            db.query(func.count(distinct(Submission.challenge_id)))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level == current_level,
+            )
+            .scalar()
+        ) or 0
+
+        # Check if user can level up: solved challenges >= current level
+        if solved_count >= current_level:
+            user.level = current_level + 1
+            db.add(user)
+            db.commit()
+            level_up = True
+
+    debug_print(f"Returning response - mentor_hint={'SET' if mentor_hint else 'None'}")
+    logger.info(f"[MENTOR HINT] Returning response - mentor_hint={'SET' if mentor_hint else 'None'}")
+    
+    return {
+        "status": "submitted",
+        "submission_id": submission.id,
+        "output": output,
+        "correct": bool(is_correct),
+        "first_time_global": first_time_global,
+        "attempt_number": attempt_number,
+        "is_retry": bool(is_retry),
+        "new_level": user.level,  # Send new level back
+        "level_up": level_up,  # Flag indicating if user leveled up
+        "old_level": old_level,  # Previous level before this submission
+        "mentor_hint": mentor_hint,  # Mentor hint if triggered (None otherwise)
+    }
+
+# ======================================================
+# SUBMIT FORCE-LEARNING CHALLENGE (POOL CHALLENGES)
+# ======================================================
+@router.post("/submit-force")
+def submit_force_challenge(
+    challenge_id: int = Form(...),
+    code: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Submit a force-learning (pool) challenge by challenge_id."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Get the challenge by ID
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+
+    # Allow access if challenge level is at user's level OR next level (for Learn More)
+    if challenge.level > user.level + 1:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level is {user.level}."
+        )
+
+    # ------------------------------------
+    # FIRST EVER SUBMISSION (GLOBAL)
+    # ------------------------------------
+    first_time_global = False
+    has_any_submission = (
+        db.query(Submission)
+        .filter(Submission.user_id == user.id)
+        .first()
+    )
+
+    if not has_any_submission:
+        first_time_global = True
+        user.level = 1  # Make sure the user starts at level 1
+        db.add(user)
+
+    # ------------------------------------
+    # ATTEMPT COUNT
+    # ------------------------------------
+    attempt_number = (
+        db.query(Submission)
+        .filter(
+            Submission.user_id == user.id,
+            Submission.challenge_id == challenge.id,
+        )
+        .count()
+        + 1
+    )
+
+    is_retry = 1 if attempt_number > 1 else 0
+
+    # ------------------------------------
+    # RUN USER CODE
+    # ------------------------------------
+    output = ""
+    is_correct = 0
+
+    try:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            exec(code, {})
+
+        output = buffer.getvalue().strip()
+
+        if output == challenge.expected_output.strip():
+            is_correct = 1
+
+    except Exception as e:
+        output = f"Error: {str(e)}"
+        is_correct = 0
+
+    # ------------------------------------
+    # SAVE SUBMISSION
+    # ------------------------------------
+    submission = Submission(
+        user_id=user.id,
+        challenge_id=challenge.id,
+        code=code,
+        is_correct=is_correct,
+        is_first_submission=1 if first_time_global else 0,
+        attempt_number=attempt_number,
+        is_retry=is_retry,
+    )
+
+    db.add(submission)
+    db.commit()
+    db.refresh(submission)
+
+    # ------------------------------------
+    # 🧠 CREATE EMPTY INSIGHT (KEY STEP)
+    # ------------------------------------
+    insight = SubmissionInsight(
+        submission_id=submission.id,
+        concepts="",
+        learning_points="",
+        real_world_use="",
+        improvement_hint="",
+    )
+
+    db.add(insight)
+    db.commit()
+
+    # ------------------------------------
+    # 🎯 MENTOR HINT (on attempts 3, 5, 7, 8, 10, or ≥ 11)
+    # ------------------------------------
+    mentor_hint = None
+    if is_correct == 0:  # Only check for wrong attempts
+        # Check if we should trigger hint based on attempt number
+        if should_trigger_mentor_hint(attempt_number):
+            debug_print(f"Attempt {attempt_number} detected (force) - checking for mentor hint...")
+            # Check if code has error or produces wrong output
+            has_error = output.startswith("Error:")
+            has_output = output and output.strip() and not has_error
+            has_expected = challenge.expected_output and challenge.expected_output.strip()
+            
+            debug_print(f"Mentor hint check (force) - has_error={has_error}, has_output={has_output}, has_expected={has_expected}")
+            debug_print(f"  Output: '{output[:100] if output else None}'")
+            debug_print(f"  Expected: '{challenge.expected_output[:100] if challenge.expected_output else None}'")
+            
+            # Trigger hint for:
+            # Type A: Syntax/runtime errors (has_error = True)
+            # Type B: Code runs but output is wrong (has_error = False, has_output = True, output != expected)
+            if has_error or (has_output and has_expected and output.strip() != challenge.expected_output.strip()):
+                debug_print("Conditions met (force) - calling OpenAI...")
+                mentor_hint = generate_mentor_hint_openai(
+                    code=code,
+                    description=challenge.description or "",
+                    expected_output=challenge.expected_output or "",
+                    user_output=output,
+                    attempt_number=attempt_number,
+                    has_error=has_error
+                )
+                debug_print(f"OpenAI returned (force): {mentor_hint}")
+            else:
+                debug_print(f"Conditions not met (force) - has_error={has_error}, has_output={has_output}, output matches={output.strip() == challenge.expected_output.strip() if output and challenge.expected_output else False}")
+        else:
+            debug_print(f"Attempt {attempt_number} (force) - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
+
+    # Level progression: check if user can level up based on solved count
+    # For "Learn More" challenges (current level), users level up when solved_count >= current_level
+    level_up = False
+    old_level = user.level
+    if is_correct:
+        current_level = user.level
+        # Count distinct challenges solved correctly at user's current level
+        solved_count = (
+            db.query(func.count(distinct(Submission.challenge_id)))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level == current_level,
+            )
+            .scalar()
+        ) or 0
+
+        # Check if user can level up: solved challenges >= current level
+        if solved_count >= current_level:
+            user.level = current_level + 1
+            db.add(user)
+            db.commit()
+            level_up = True
+
+    logger.info(f"[MENTOR HINT] Returning response (force) - mentor_hint={'SET' if mentor_hint else 'None'}")
+    
+    logger.info(f"[MENTOR HINT] Returning response (force) - mentor_hint={'SET' if mentor_hint else 'None'}")
+    
+    return {
+        "status": "submitted",
+        "submission_id": submission.id,
+        "output": output,
+        "correct": bool(is_correct),
+        "first_time_global": first_time_global,
+        "attempt_number": attempt_number,
+        "is_retry": bool(is_retry),
+        "current_level": user.level,
+        "level_up": level_up,  # Flag indicating if user leveled up
+        "old_level": old_level,  # Previous level before this submission
+        "mentor_hint": mentor_hint,  # Mentor hint if triggered (None otherwise)
+    }
+
+# ======================================================
+# ADMIN – CREATE CHALLENGE
+# ======================================================
+@router.post("/admin/create")
+def admin_create_challenge(
+    level: int = Form(...),
+    title: str = Form(...),
+    description: str = Form(...),
+    expected_output: str = Form(...),
+    challenge_date: str = Form(None),  # Optional - leave empty for pool challenges
+
+    # New fields added to the form
+    main_category: str = Form(...),   # Main category (e.g., Basic Python)
+    sub_category: str = Form(...),    # Sub category (e.g., Fundamentals)
+    stage_order: int = Form(1),       # Stage order (default 1)
+
+    db: Session = Depends(get_db),
+    user: User = Depends(get_admin),  # Require admin access
+):
+
+    # Parse challenge_date if provided, otherwise None (for pool challenges)
+    parsed_date = None
+    if challenge_date and challenge_date.strip():
+        try:
+            parsed_date = date.fromisoformat(challenge_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # Always create new challenges - this allows multiple challenges with the same date
+    # This is important for "Learn More" pool challenges where users need multiple challenges per level
+    # Even if a challenge with today's date exists, we create a new one (allows multiple pool challenges)
+    try:
+        challenge = Challenge(
+            level=level,
+            title=title,
+            description=description,
+            expected_output=expected_output,
+            challenge_date=parsed_date,  # None for pool challenges, date for daily/future challenges
+
+            # These are the new fields that should be inserted
+            main_category=main_category.strip(),
+            sub_category=sub_category.strip(),
+            stage_order=stage_order,
+        )
+
+        db.add(challenge)
+        db.commit()
+        db.refresh(challenge)
+        return {"status": "challenge created", "challenge_id": challenge.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create challenge: {str(e)}")
+
+# ======================================================
+# ADMIN – LIST CHALLENGES
+# ======================================================
+@router.get("/admin/list")
+def admin_list_challenges(
+    main_category: str = None,
+    sub_category: str = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_admin),
+):
+    """List challenges filtered by category and subcategory (admin only)."""
+    query = db.query(Challenge)
+
+    if main_category:
+        query = query.filter(Challenge.main_category == main_category)
+
+    if sub_category:
+        query = query.filter(Challenge.sub_category == sub_category)
+
+    challenges = query.order_by(
+        Challenge.level.asc(),
+        Challenge.id.desc()
+    ).all()
+
+    result = []
+    for ch in challenges:
+        result.append({
+            "id": ch.id,
+            "level": ch.level,
+            "title": ch.title,
+            "description": ch.description,
+            "main_category": ch.main_category or "",
+            "sub_category": ch.sub_category or "",
+            "expected_output": ch.expected_output or "",
+            "challenge_date": ch.challenge_date.isoformat() if ch.challenge_date else None,
+        })
+
+    return {"challenges": result}

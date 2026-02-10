@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6">
+  {% if ok %}
+    <div class="text-xl font-semibold mb-2">Email verified ✅</div>
+    <div class="text-zinc-400 mb-4">You can login now.</div>
+    <a href="/login" class="inline-block rounded-xl bg-white text-zinc-950 font-semibold px-4 py-3">Go to login</a>
+  {% else %}
+    <div class="text-xl font-semibold mb-2">Invalid token ❌</div>
+    <div class="text-zinc-400 mb-4">That verification link is not valid.</div>
+    <a href="/signup" class="inline-block rounded-xl bg-white text-zinc-950 font-semibold px-4 py-3">Create account</a>
+  {% endif %}
+</div>
+{% endblock %}
