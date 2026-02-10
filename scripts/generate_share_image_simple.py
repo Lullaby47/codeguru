@@ -64,15 +64,33 @@ def generate_share_image():
     # Title: CODEGURU
     draw.text((x_start, y_start), "CODEGURU", fill='#00ff66', font=title_font)
     
-    # Subtitle: Secure Portal
-    draw.text((x_start, y_start + 90), "Secure Portal", fill='#cccccc', font=subtitle_font)
+    # Subtitle: Secure Developer Portal
+    draw.text((x_start, y_start + 90), "Secure Developer Portal", fill='#cccccc', font=subtitle_font)
     
     # Description
-    desc_text = "Master coding challenges • Track progress • Level up your skills"
+    desc_text = "Official CodeGuru login and dashboard. Secure access to your account."
     draw.text((x_start, y_start + 170), desc_text, fill='#999999', font=desc_font)
     
-    # Accent line
-    draw.line([(x_start, y_start + 220), (x_start + 500, y_start + 220)], fill='#00ff66', width=4)
+    # Button-style element: "Open Official App"
+    button_x = x_start
+    button_y = y_start + 250
+    button_width = 350
+    button_height = 60
+    # Button background
+    draw.rounded_rectangle(
+        [(button_x, button_y), (button_x + button_width, button_y + button_height)],
+        radius=12,
+        fill='#00ff66',
+        outline=None
+    )
+    # Button text
+    button_text = "Open Official App"
+    bbox = draw.textbbox((0, 0), button_text, font=subtitle_font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    button_text_x = button_x + (button_width - text_width) // 2
+    button_text_y = button_y + (button_height - text_height) // 2
+    draw.text((button_text_x, button_text_y), button_text, fill='#1e1e1e', font=subtitle_font)
     
     # Code icon box (right side)
     box_x = 800

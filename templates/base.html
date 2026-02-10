@@ -6,22 +6,25 @@
     <title>{% block title %}CodeGuru{% endblock %}</title>
     <link rel="stylesheet" href="/static/styles.css">
     
+    {# Get base URL dynamically from request #}
+    {% set base_url = str(request.base_url).rstrip('/') %}
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://codeguru-production.up.railway.app/">
+    <meta property="og:url" content="{{ base_url }}{{ request.url.path }}">
     <meta property="og:title" content="CodeGuru — Secure Portal">
-    <meta property="og:description" content="Official CodeGuru login and dashboard. Master coding challenges and level up your skills.">
-    <meta property="og:image" content="https://codeguru-production.up.railway.app/static/share.png">
+    <meta property="og:description" content="Official CodeGuru login and dashboard. Secure access to your account.">
+    <meta property="og:image" content="{{ base_url }}/static/share.png">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://codeguru-production.up.railway.app/">
+    <meta name="twitter:url" content="{{ base_url }}{{ request.url.path }}">
     <meta name="twitter:title" content="CodeGuru — Secure Portal">
-    <meta name="twitter:description" content="Official CodeGuru login and dashboard. Master coding challenges and level up your skills.">
-    <meta name="twitter:image" content="https://codeguru-production.up.railway.app/static/share.png">
+    <meta name="twitter:description" content="Official CodeGuru login and dashboard. Secure access to your account.">
+    <meta name="twitter:image" content="{{ base_url }}/static/share.png">
     
     <!-- Additional SEO -->
-    <meta name="description" content="Official CodeGuru portal. Master coding challenges, track your progress, and level up your programming skills.">
+    <meta name="description" content="Official CodeGuru login and dashboard. Secure access to your account.">
 </head>
 
 <body>
