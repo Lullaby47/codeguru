@@ -652,3 +652,280 @@ def logout():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie("access_token")
     return response
+
+
+# ======================================================
+# ADMIN PAGES (HTML) – create challenges & manage users
+# ======================================================
+
+
+@router.get("/admin/challenge/new", response_class=HTMLResponse)
+def admin_new_challenge_page(
+    request: Request,
+    user: User = Depends(get_admin),
+):
+    """Show the admin challenge creation page."""
+    today = date.today().isoformat()
+    return templates.TemplateResponse(
+        "admin_challenge.html",
+        {
+            "request": request,
+            "user": user,
+            "challenge": None,
+            "today": today,
+            "edit_mode": False,
+            "error": None,
+            "success": None,
+        },
+    )
+
+
+@router.post("/admin/challenge/new", response_class=HTMLResponse)
+def admin_create_challenge_submit(
+    request: Request,
+    level: int = Form(...),
+    title: str = Form(...),
+    description: str = Form(...),
+    expected_output: str = Form(...),
+    challenge_date: str = Form(None),
+    main_category: str = Form(...),
+    sub_category: str = Form(...),
+    stage_order: int = Form(1),
+    user: User = Depends(get_admin),
+):
+    """
+    Handle admin challenge creation via the HTML form.
+    Calls the internal /challenge/admin/create API endpoint.
+    """
+    payload = {
+        "level": level,
+        "title": title,
+        "description": description,
+        "expected_output": expected_output,
+        "challenge_date": challenge_date or "",
+        "main_category": main_category,
+        "sub_category": sub_category,
+        "stage_order": stage_order,
+    }
+
+    try:
+        r = requests.post(
+            f"{_api_base(request)}/challenge/admin/create",
+            data=payload,
+            cookies=request.cookies,
+            allow_redirects=False,
+            timeout=10,
+        )
+    except Exception as exc:
+        print("[WEB] /admin/challenge/new network error:", repr(exc), flush=True)
+        return templates.TemplateResponse(
+            "admin_challenge.html",
+            {
+                "request": request,
+                "user": user,
+                "challenge": None,
+                "today": date.today().isoformat(),
+                "edit_mode": False,
+                "error": "Failed to create challenge (network error). Please try again.",
+                "success": None,
+            },
+        )
+
+    content_type = r.headers.get("content-type", "")
+
+    if not (200 <= r.status_code < 300):
+        print("[WEB] /admin/challenge/new FAILED status:", r.status_code, flush=True)
+        print("[WEB] /admin/challenge/new content-type:", content_type, flush=True)
+        try:
+            print("[WEB] /admin/challenge/new body:", r.text[:200], flush=True)
+        except Exception:
+            pass
+        error = _extract_error(r, "Failed to create challenge.")
+        return templates.TemplateResponse(
+            "admin_challenge.html",
+            {
+                "request": request,
+                "user": user,
+                "challenge": None,
+                "today": date.today().isoformat(),
+                "edit_mode": False,
+                "error": error,
+                "success": None,
+            },
+        )
+
+    if "application/json" not in content_type.lower():
+        print(
+            "[WEB] /admin/challenge/new unexpected Content-Type on success:",
+            content_type,
+            flush=True,
+        )
+        return templates.TemplateResponse(
+            "admin_challenge.html",
+            {
+                "request": request,
+                "user": user,
+                "challenge": None,
+                "today": date.today().isoformat(),
+                "edit_mode": False,
+                "error": "Challenge created, but response from API was unexpected.",
+                "success": None,
+            },
+        )
+
+    # Success
+    return templates.TemplateResponse(
+        "admin_challenge.html",
+        {
+            "request": request,
+            "user": user,
+            "challenge": None,
+            "today": date.today().isoformat(),
+            "edit_mode": False,
+            "error": None,
+            "success": "Challenge created successfully.",
+        },
+    )
+
+
+@router.get("/admin/challenges/list", response_class=HTMLResponse)
+def admin_challenges_list_page(
+    request: Request,
+    user: User = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Show the admin challenges list page.
+
+    The page uses JS to call /challenge/admin/list (API) for data.
+    """
+    main_categories = (
+        db.query(Challenge.main_category)
+        .filter(
+            Challenge.main_category.isnot(None),
+            Challenge.main_category != "",
+        )
+        .distinct()
+        .all()
+    )
+    main_categories = [c[0] for c in main_categories if c[0]]
+
+    return templates.TemplateResponse(
+        "admin_challenges_list.html",
+        {
+            "request": request,
+            "user": user,
+            "main_categories": main_categories,
+        },
+    )
+
+
+@router.get("/admin/users", response_class=HTMLResponse)
+def admin_users_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_main_admin),
+):
+    """Main admin-only user management page."""
+    users = db.query(User).order_by(User.id.asc()).all()
+
+    users_data = [
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "level": getattr(u, "level", None),
+            "role": u.role,
+            "is_main_admin": u.id == MAIN_ADMIN_USER_ID,
+        }
+        for u in users
+    ]
+
+    no_users_message = None
+    if len(users_data) <= 1:
+        no_users_message = "No other users found yet. Once users sign up, they will appear here."
+
+    return templates.TemplateResponse(
+        "admin_users.html",
+        {
+            "request": request,
+            "user": user,
+            "users": users_data,
+            "no_users_message": no_users_message,
+        },
+    )
+
+
+@router.post("/admin/users/{user_id}/promote")
+def admin_promote_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_main_admin),
+):
+    """Promote a normal user to co-admin (main admin only)."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        return RedirectResponse(
+            url="/admin/users?error=User+not+found", status_code=303
+        )
+
+    if target.id == MAIN_ADMIN_USER_ID:
+        return RedirectResponse(
+            url="/admin/users?error=Cannot+change+main+admin", status_code=303
+        )
+
+    target.role = "coadmin"
+    db.commit()
+    return RedirectResponse(
+        url="/admin/users?success=User+promoted+to+co-admin", status_code=303
+    )
+
+
+@router.post("/admin/users/{user_id}/demote")
+def admin_demote_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_main_admin),
+):
+    """Demote a co-admin back to normal user (main admin only)."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        return RedirectResponse(
+            url="/admin/users?error=User+not+found", status_code=303
+        )
+
+    if target.id == MAIN_ADMIN_USER_ID:
+        return RedirectResponse(
+            url="/admin/users?error=Cannot+change+main+admin", status_code=303
+        )
+
+    target.role = "user"
+    db.commit()
+    return RedirectResponse(
+        url="/admin/users?success=User+demoted+to+normal+user", status_code=303
+    )
+
+
+@router.post("/admin/users/{user_id}/delete")
+def admin_delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_main_admin),
+):
+    """Delete a user (and their progress); main admin only."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        return RedirectResponse(
+            url="/admin/users?error=User+not+found", status_code=303
+        )
+
+    if target.id == MAIN_ADMIN_USER_ID:
+        return RedirectResponse(
+            url="/admin/users?error=Cannot+delete+main+admin", status_code=303
+        )
+
+    db.delete(target)
+    db.commit()
+    return RedirectResponse(
+        url="/admin/users?success=User+deleted+successfully", status_code=303
+    )
