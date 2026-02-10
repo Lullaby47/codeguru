@@ -47,7 +47,8 @@
             </div>
         {% endif %}
 
-        <form method="post">
+        <!-- IMPORTANT: send form to auth endpoint -->
+        <form method="post" action="/auth/login">
 
             <input
                 type="text"
