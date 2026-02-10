@@ -18,11 +18,18 @@ from app.submissions.models import Submission, SubmissionInsight
 
 
 def _api_base(request: Request) -> str:
-    # Prefer explicit override (useful if behind proxy), otherwise use current host.
+    """
+    Base URL for internal API calls.
+
+    - Prefer explicit override via API_BASE (works on Railway / behind proxy).
+    - Otherwise, fall back to localhost:8080 which matches the uvicorn server.
+    - We intentionally do NOT rely on public domains or request.base_url here.
+    """
     base = os.getenv("API_BASE", "").strip()
     if base:
         return base.rstrip("/")
-    return str(request.base_url).rstrip("/")
+    # Default: same container / local dev
+    return "http://127.0.0.1:8080"
 
 
 templates = Jinja2Templates(directory="templates")
@@ -55,29 +62,57 @@ def signup_submit(
     username: str = Form(...),
     password: str = Form(...),
 ):
-    r = requests.post(
-        # Call the backend auth API, not the HTML route
-        f"{_api_base(request)}/auth/signup",
-        data={"email": email, "username": username, "password": password},
-    )
-
-    print("[WEB] /signup -> /auth/signup status:", r.status_code, flush=True)
     try:
-        print("[WEB] /auth/signup body:", r.text[:300], flush=True)
-    except Exception:
-        pass
+        r = requests.post(
+            # Call the backend auth API, not the HTML route
+            f"{_api_base(request)}/auth/signup",
+            data={"email": email, "username": username, "password": password},
+            allow_redirects=False,  # We expect a direct JSON response
+            timeout=10,
+        )
+    except Exception as exc:
+        # Network / connection level failure
+        print("[WEB] /signup -> /auth/signup network error:", repr(exc), flush=True)
+        return templates.TemplateResponse(
+            "signup.html",
+            {
+                "request": request,
+                "error": "Signup temporarily unavailable. Please try again shortly.",
+            },
+        )
+
+    content_type = r.headers.get("content-type", "")
 
     if not (200 <= r.status_code < 300):
-        detail = "Signup failed"
+        # Detailed debug logging on failure
+        print("[WEB] /signup -> /auth/signup FAILED status:", r.status_code, flush=True)
+        print("[WEB] /auth/signup content-type:", content_type, flush=True)
         try:
-            j = r.json()
-            detail = j.get("detail") or j.get("message") or detail
+            print("[WEB] /auth/signup body:", r.text[:200], flush=True)
         except Exception:
             pass
+
+        detail = _extract_error(r, "Signup failed")
         return templates.TemplateResponse(
             "signup.html", {"request": request, "error": detail}
         )
 
+    # Verify we really got JSON
+    if "application/json" not in content_type.lower():
+        print(
+            "[WEB] /auth/signup unexpected Content-Type on success:",
+            content_type,
+            flush=True,
+        )
+        return templates.TemplateResponse(
+            "signup.html",
+            {
+                "request": request,
+                "error": "Signup failed: unexpected response from auth service.",
+            },
+        )
+
+    # Happy path: redirect to login page
     return RedirectResponse(url="/login", status_code=303)
 
 
@@ -95,24 +130,53 @@ def login_submit(
     email_or_username: str = Form(...),
     password: str = Form(...),
 ):
-    r = requests.post(
-        # Call the backend auth API, not the HTML route
-        f"{_api_base(request)}/auth/login",
-        data={"email_or_username": email_or_username, "password": password},
-    )
-
-    # Log backend response for troubleshooting
     try:
-        print("[WEB] /login -> /auth/login status:", r.status_code, flush=True)
-        print("[WEB] /auth/login body:", r.text[:300], flush=True)
-    except Exception:
-        pass
+        r = requests.post(
+            # Call the backend auth API, not the HTML route
+            f"{_api_base(request)}/auth/login",
+            data={"email_or_username": email_or_username, "password": password},
+            allow_redirects=False,  # We expect a direct JSON response
+            timeout=10,
+        )
+    except Exception as exc:
+        # Network / connection level failure
+        print("[WEB] /login -> /auth/login network error:", repr(exc), flush=True)
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "Login temporarily unavailable. Please try again shortly.",
+            },
+        )
 
-    # ✅ Accept any 2xx
+    content_type = r.headers.get("content-type", "")
+
+    # On failure, dump debug info
     if not (200 <= r.status_code < 300):
+        print("[WEB] /login -> /auth/login FAILED status:", r.status_code, flush=True)
+        print("[WEB] /auth/login content-type:", content_type, flush=True)
+        try:
+            print("[WEB] /auth/login body:", r.text[:200], flush=True)
+        except Exception:
+            pass
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": _extract_error(r, "Invalid credentials")},
+        )
+
+    # Ensure we really got JSON back
+    if "application/json" not in content_type.lower():
+        print(
+            "[WEB] /auth/login unexpected Content-Type on success:",
+            content_type,
+            flush=True,
+        )
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "Login failed: unexpected response from auth service.",
+            },
         )
 
     try:
@@ -123,22 +187,31 @@ def login_submit(
             or j.get("accessToken")
             or j.get("token")
         )
-    except Exception:
+    except Exception as exc:
+        print("[WEB] /auth/login JSON decode error:", repr(exc), flush=True)
         token = None
 
     if not token:
+        print("[WEB] /auth/login missing access token in JSON:", j if "j" in locals() else None, flush=True)
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Login failed (no access token returned)"},
+            {
+                "request": request,
+                "error": "Login failed: no access token returned from auth service.",
+            },
         )
 
     response = RedirectResponse(url="/dashboard", status_code=303)
+
+    # Cookie security: httpOnly always; secure in production; samesite lax
+    secure_cookie = os.getenv("ENVIRONMENT", "").lower() == "production"
 
     # ✅ Most FastAPI auth deps expect "Bearer <token>"
     response.set_cookie(
         key="access_token",
         value=f"Bearer {token}",
         httponly=True,
+        secure=secure_cookie,
         samesite="lax",
     )
     return response
