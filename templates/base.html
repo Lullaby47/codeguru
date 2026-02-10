@@ -118,17 +118,6 @@
         <div class="codeguru-title-mobile">CODEGURU</div>
     </a>
 </div>
-<!-- Row 3: User profile pill below title on mobile -->
-<div class="nav-user-mobile">
-    <div class="user-profile-icon-mobile" id="userProfileIconMobile" title="Your Profile" 
-         data-user-level="{% if user %}{{ user.level }}{% else %}1{% endif %}"
-         data-username="{% if user %}{{ user.username }}{% else %}Guest{% endif %}"
-         data-email="{% if user %}{{ user.email }}{% else %}guest@example.com{% endif %}"
-         data-streak="{% if user %}{{ user.streak }}{% else %}0{% endif %}"
-         data-verified="{% if user %}{{ 'Yes' if user.is_verified else 'No' }}{% else %}No{% endif %}">
-        <div class="profile-level">{% if user %}{{ user.username }}{% else %}Guest{% endif %}</div>
-    </div>
-</div>
 {% endif %}
 
 <div class="page {% if not hide_nav %}with-nav{% endif %}">
