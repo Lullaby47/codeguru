@@ -16,9 +16,9 @@ def _build_database_url() -> str:
     - Fallback to a local SQLite file for development.
     - Normalize legacy postgres:// URLs to SQLAlchemy's postgresql+psycopg2://.
     """
-    url = os.getenv("DATABASE_URL", "").strip()
-    if not url:
-        url = f"sqlite:///{BASE_DIR / 'codeguru.db'}"
+    # Prefer explicit DATABASE_URL, fall back to simple local SQLite file.
+    # This keeps the default simple and non-hardcoded to a project-specific path.
+    url = os.getenv("DATABASE_URL", "sqlite:///./local.db").strip()
 
     if url.startswith("postgres://"):
         # SQLAlchemy 2.x expects a driver-qualified URL
