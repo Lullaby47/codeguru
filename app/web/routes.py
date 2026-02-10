@@ -56,7 +56,8 @@ def signup_submit(
     password: str = Form(...),
 ):
     r = requests.post(
-        f"{_api_base(request)}/signup",
+        # Call the backend auth API, not the HTML route
+        f"{_api_base(request)}/auth/signup",
         data={"email": email, "username": username, "password": password},
     )
 
@@ -95,7 +96,8 @@ def login_submit(
     password: str = Form(...),
 ):
     r = requests.post(
-        f"{_api_base(request)}/login",
+        # Call the backend auth API, not the HTML route
+        f"{_api_base(request)}/auth/login",
         data={"email_or_username": email_or_username, "password": password},
     )
 
