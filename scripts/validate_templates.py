@@ -10,6 +10,7 @@ Usage:
 import sys
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
+import re
 
 def validate_templates():
     """Validate all Jinja templates in the templates directory"""
@@ -22,7 +23,7 @@ def validate_templates():
     
     env = Environment(loader=FileSystemLoader(str(templates_dir)))
     errors = []
-    
+
     # Get all HTML template files
     template_files = list(templates_dir.glob("*.html"))
     
@@ -31,7 +32,21 @@ def validate_templates():
         return False
     
     print(f"Validating {len(template_files)} template(s)...\n")
-    
+
+    # Guardrail: disallow Python built-ins inside Jinja templates
+    builtin_functions = ["str", "int", "len", "dict", "list", "bool", "float", "type", "getattr"]
+
+    for template_file in sorted(template_files):
+        source = template_file.read_text(encoding="utf-8")
+        for name in builtin_functions:
+            # \b ensures we match the function name, not substrings like parseInt
+            pattern = r"\b" + re.escape(name) + r"\s*\("
+            if re.search(pattern, source):
+                msg = f"Python builtin '{name}()' used in template {template_file.name}. Move this logic into Python or use Jinja filters."
+                print(f"ERROR {template_file.name}")
+                print(f"  {msg}")
+                errors.append((template_file.name, msg))
+
     # Mock context for templates that need variables
     class MockRequest:
         def __init__(self):
@@ -39,11 +54,14 @@ def validate_templates():
             self.url = type('obj', (object,), {'path': '/'})()
     
     mock_context = {
-        'request': MockRequest(),
-        'user': None,
+        "request": MockRequest(),
+        "user": None,
     }
-    
+
     for template_file in sorted(template_files):
+        # Skip further checks if we already recorded an error for this file
+        if any(t[0] == template_file.name for t in errors):
+            continue
         try:
             # Try to load and parse the template
             template = env.get_template(template_file.name)
@@ -51,7 +69,7 @@ def validate_templates():
             # Use mock context to avoid undefined variable errors
             try:
                 template.render(**mock_context)
-            except (TypeError, AttributeError, KeyError):
+            except Exception:
                 # Missing variables are OK - we just want syntax validation
                 pass
             print(f"OK {template_file.name}")
@@ -63,7 +81,10 @@ def validate_templates():
         except Exception as e:
             # Check if it's a syntax-related error
             error_str = str(e).lower()
-            if any(keyword in error_str for keyword in ["unexpected end", "missing endif", "missing endfor", "missing endblock", "syntax"]):
+            if any(
+                keyword in error_str
+                for keyword in ["unexpected end", "missing endif", "missing endfor", "missing endblock", "syntax"]
+            ):
                 print(f"ERROR {template_file.name}")
                 print(f"  Error: {e}")
                 errors.append((template_file.name, e))
