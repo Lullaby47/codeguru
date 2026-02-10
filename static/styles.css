@@ -187,10 +187,10 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 8px;
     z-index: 1000;
-    gap: 8px;
-    overflow: hidden;
+    gap: 4px;
+    overflow: visible;
 }
 
 .nav-left {
@@ -211,6 +211,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     color: var(--green);
     animation: blinkIdle 1.3s infinite;
     white-space: nowrap;
+    display: none; /* Hidden on mobile */
 }
 
 .nav-center:hover {
@@ -221,24 +222,38 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 .nav-right {
     margin-left: auto;
     display: flex;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
     flex-shrink: 0;
+    overflow: visible;
+}
+
+.logout-icon {
+    color: #ff4444 !important;
+    font-size: 20px !important;
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 4px rgba(255, 68, 68, 0.6));
+}
+
+.logout-link:hover .logout-icon {
+    filter: drop-shadow(0 0 8px rgba(255, 68, 68, 0.9));
+    transform: scale(1.1);
 }
 
 .nav-item {
     font-size: 18px;
     opacity: 0.65;
     cursor: pointer;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease;
     user-select: none;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
+    min-width: 40px;
     min-height: 44px;
     padding: 4px;
+    flex-shrink: 0;
 }
 
 .nav-item:hover {
@@ -329,6 +344,37 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
+   NAV TITLE (Mobile - Below Nav Bar)
+   ============================================ */
+.nav-title-mobile {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    z-index: 999;
+    display: block;
+}
+
+.codeguru-title-mobile {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--green);
+    text-align: center;
+    animation: blinkIdle 1.3s infinite;
+    cursor: pointer;
+}
+
+.codeguru-title-mobile:hover {
+    animation: none;
+    opacity: 1;
+}
+
+/* ============================================
    PAGE CONTENT
    ============================================ */
 .page {
@@ -340,7 +386,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 .with-nav {
-    padding-top: 72px;
+    padding-top: 96px; /* 56px nav + 40px title */
 }
 
 /* ============================================
@@ -1033,12 +1079,21 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     }
 
     .nav-center {
+        display: block; /* Show on desktop */
         font-size: 24px;
         letter-spacing: 4px;
     }
 
+    .nav-title-mobile {
+        display: none; /* Hide mobile title on desktop */
+    }
+
     .nav-right {
         gap: 26px;
+    }
+
+    .with-nav {
+        padding-top: 80px; /* Back to normal on desktop */
     }
 
     .nav-quote {

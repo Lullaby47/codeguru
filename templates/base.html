@@ -76,11 +76,18 @@
         </a>
 
         <!-- Logout -->
-        <a href="/logout" title="Logout">
-            <div class="nav-item">⏻</div>
+        <a href="/logout" title="Logout" class="logout-link">
+            <div class="nav-item logout-icon">⏻</div>
         </a>
     </div>
 
+</div>
+{% if not hide_nav %}
+<!-- CodeGuru title below nav on mobile -->
+<div class="nav-title-mobile">
+    <a href="/dashboard">
+        <div class="codeguru-title-mobile">CODEGURU</div>
+    </a>
 </div>
 {% endif %}
 
