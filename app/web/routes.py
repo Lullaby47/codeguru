@@ -669,6 +669,58 @@ def logout():
 
 
 # ======================================================
+# FORCE LEARNING (POOL CHALLENGES)
+# ======================================================
+@router.get("/force-learning", response_class=HTMLResponse)
+def force_learning_page(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Show force-learning (pool challenges) page.
+    If no challenges are available, show a friendly message instead of JSON 404.
+    """
+    # Check if there are any pool challenges available for the user's level
+    try:
+        r = requests.get(
+            f"{_api_base(request)}/challenge/next/{user.level}",
+            cookies=request.cookies,
+            timeout=10,
+        )
+        
+        if r.status_code == 200:
+            result = r.json()
+            challenge_id = result.get("challenge_id")
+            
+            # If a challenge is available, redirect to challenge page with challenge_id
+            if challenge_id:
+                return RedirectResponse(
+                    url=f"/challenge?challenge_id={challenge_id}",
+                    status_code=303
+                )
+        
+        # No challenges available - show friendly message
+        return templates.TemplateResponse(
+            "force_learning_empty.html",
+            {
+                "request": request,
+                "user": user,
+            },
+        )
+    except Exception as exc:
+        # On any error (network, API down, etc.), show friendly message
+        print(f"[WEB] /force-learning error: {repr(exc)}", flush=True)
+        return templates.TemplateResponse(
+            "force_learning_empty.html",
+            {
+                "request": request,
+                "user": user,
+            },
+        )
+
+
+# ======================================================
 # ADMIN PAGES (HTML) – create challenges & manage users
 # ======================================================
 
