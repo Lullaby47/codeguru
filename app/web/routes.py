@@ -56,7 +56,7 @@ def signup_submit(
     password: str = Form(...),
 ):
     r = requests.post(
-        f"{_api_base(request)}/auth/signup",
+        f"{_api_base(request)}/signup",
         data={"email": email, "username": username, "password": password},
     )
 
@@ -95,7 +95,7 @@ def login_submit(
     password: str = Form(...),
 ):
     r = requests.post(
-        f"{_api_base(request)}/auth/login",
+        f"{_api_base(request)}/login",
         data={"email_or_username": email_or_username, "password": password},
     )
 
