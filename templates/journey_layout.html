@@ -7,10 +7,12 @@
 /* ===== LAYOUT ===== */
 .journey-layout {
     display: grid;
-    grid-template-columns: 220px 320px 1fr;
-    gap: 20px;
-    max-width: 1400px;
-    margin: 30px auto;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 100%;
+    margin: 20px auto;
+    padding: 0 16px;
+    box-sizing: border-box;
 }
 
 .journey-layout.has-search {
@@ -28,14 +30,15 @@
 
 .journey-search-input {
     width: 100%;
-    padding: 12px 16px;
+    padding: 14px 16px;
     background: #2a2a2a;
     border: 1px solid #3a3a3a;
     border-radius: 8px;
     color: #ccc;
-    font-size: 14px;
+    font-size: 16px; /* Prevents iOS zoom */
     box-sizing: border-box;
     transition: border-color 0.2s ease;
+    min-height: 44px;
 }
 
 .journey-search-input:focus {
@@ -48,12 +51,23 @@
     color: #666;
 }
 
-/* Modes */
-.journey-layout.tree-mode {
-    grid-template-columns: 220px 1fr;
-}
-.journey-layout.detail-mode {
-    grid-template-columns: 220px 1fr;
+/* Modes - Desktop only */
+@media (min-width: 720px) {
+    .journey-layout {
+        grid-template-columns: 220px 320px 1fr;
+        gap: 20px;
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 0;
+    }
+    
+    .journey-layout.tree-mode {
+        grid-template-columns: 220px 1fr;
+    }
+    
+    .journey-layout.detail-mode {
+        grid-template-columns: 220px 1fr;
+    }
 }
 
 /* Panels */
@@ -64,6 +78,10 @@
     border: 1px solid #1f1f1f;
     border-radius: 12px;
     padding: 18px;
+    width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .left-panel.hidden,
@@ -84,12 +102,17 @@
 
 .left-panel .item {
     font-size: 13px;
-    padding: 8px 10px;
+    padding: 12px 10px;
     border-radius: 8px;
     cursor: pointer;
     color: #ccc;
     width: 100%;
     text-align: center;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-wrap: break-word;
 }
 
 .left-panel .item.active {
@@ -129,12 +152,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 10px;
+    padding: 12px 10px;
     border-radius: 8px;
     font-size: 13px;
     cursor: pointer;
     color: #bbb;
     transition: all 0.2s ease;
+    min-height: 44px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .tree-item:hover {
@@ -210,6 +236,8 @@
     color: #fff;
     line-height: 1.8;
     padding: 8px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .search-result-item .view-solution-link {

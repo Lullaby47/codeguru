@@ -9,119 +9,146 @@
     animation: fadeSlide .25s ease-out;
 }
 
-@keyframes fadeSlide {
-    from { opacity:0; transform:translateY(6px); }
-    to { opacity:1; transform:none; }
-}
-
 .breadcrumb {
     font-size: 11px;
     color: #666;
     margin-bottom: 10px;
+    word-wrap: break-word;
 }
 
 .breadcrumb .main { color:#00ff66; }
 .breadcrumb .sub { color:#ffd84d; }
 
 .title-row {
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    padding-bottom:14px;
-    border-bottom:1px solid #1f1f1f;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #1f1f1f;
 }
 
 .title-row h2 {
-    font-size:22px;
-    margin:0;
+    font-size: 20px;
+    margin: 0;
+    word-wrap: break-word;
+    line-height: 1.3;
+}
+
+.title-row-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
 }
 
 .status {
-    font-size:10px;
-    padding:5px 12px;
-    border-radius:12px;
-    background:rgba(0,255,102,.15);
-    color:#00ff66;
-    border:1px solid rgba(0,255,102,.25);
+    font-size: 12px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: rgba(0, 255, 102, 0.15);
+    color: #00ff66;
+    border: 1px solid rgba(0, 255, 102, 0.25);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    font-weight: bold;
+}
+
+.status:hover {
+    opacity: 0.8;
 }
 
 .progress-btn {
-    background:rgba(255,0,0,.2) !important;
-    color:#ff4444 !important;
-    border:1px solid rgba(255,0,0,.4) !important;
-    font-weight:bold;
+    background: rgba(255, 0, 0, 0.2) !important;
+    color: #ff4444 !important;
+    border: 1px solid rgba(255, 0, 0, 0.4) !important;
+}
+
+.improve-btn {
+    background: rgba(68, 136, 255, 0.2) !important;
+    color: #4488ff !important;
+    border: 1px solid rgba(68, 136, 255, 0.4) !important;
+    text-decoration: none;
 }
 
 .meta {
-    font-size:11px;
-    color:#666;
-    margin:12px 0 18px;
-}
-
-.stats {
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin-bottom:22px;
+    font-size: 11px;
+    color: #666;
+    margin: 12px 0 18px;
+    word-wrap: break-word;
 }
 
 .stat {
-    background:#2a2a2a;
-    border:1px solid #3a3a3a;
-    border-radius:8px;
-    padding:12px;
-    text-align:center;
-    font-size:11px;
-    color:#999;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    font-size: 11px;
+    color: #999;
 }
 
 .stat strong {
-    display:block;
-    font-size:16px;
-    color:#fff;
+    display: block;
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 4px;
 }
 
 .section {
-    margin-top:22px;
+    margin-top: 22px;
 }
 
 .section h3 {
-    font-size:13px;
-    color:#00ff66;
-    margin-bottom:10px;
-    text-transform:uppercase;
+    font-size: 13px;
+    color: #00ff66;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.section-content {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 16px;
+    color: #ccc;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 pre {
-    background:#2a2a2a;
-    border:1px solid #3a3a3a;
-    border-radius:8px;
-    padding:16px;
-    color:#00ff66;
-    font-size:13px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 16px;
+    color: #00ff66;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-x: auto;
 }
 
 ul {
-    list-style:none;
-    padding-left:0;
-    color:#bbb;
+    list-style: none;
+    padding-left: 0;
+    color: #bbb;
 }
 
 ul li {
-    margin-bottom:6px;
+    margin-bottom: 6px;
+    word-wrap: break-word;
 }
 
 ul li:before {
-    content:"→ ";
-    color:#00ff66;
-}
-
-/* Attempt Panels Container */
-.attempts-container {
-    margin-top: 22px;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    content: "→ ";
+    color: #00ff66;
 }
 
 .attempt-panel {
@@ -131,6 +158,8 @@ ul li:before {
     padding: 14px;
     animation: fadeSlide .25s ease-out;
     box-shadow: 0 0 8px rgba(255, 68, 68, 0.2), 0 0 2px rgba(255, 68, 68, 0.3);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .attempt-panel.correct {
@@ -166,6 +195,7 @@ ul li:before {
     margin: 0;
     color: #fff;
     line-height: 1.3;
+    word-wrap: break-word;
 }
 
 .attempt-meta {
@@ -186,10 +216,10 @@ ul li:before {
 }
 
 .attempt-code {
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            border-radius: 6px;
-            padding: 10px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 10px;
     color: #00ff66;
     font-family: monospace;
     font-size: 11px;
@@ -197,35 +227,20 @@ ul li:before {
     margin: 0;
     max-height: 100px;
     overflow-y: auto;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
-.progress-btn {
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-}
+@media (min-width: 720px) {
+    .title-row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
 
-.progress-btn:hover {
-    opacity: 0.8;
-}
-
-.improve-btn {
-    background: rgba(68, 136, 255, 0.2) !important;
-    color: #4488ff !important;
-    border: 1px solid rgba(68, 136, 255, 0.4) !important;
-    font-weight: bold;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-    margin-left: 8px;
-}
-
-.improve-btn:hover {
-    opacity: 0.8;
-}
-
-.button-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    .title-row h2 {
+        font-size: 22px;
+    }
 }
 </style>
 
@@ -247,7 +262,7 @@ ul li:before {
 
     <div class="title-row">
         <h2>{{ submission.challenge.title }} - level {{ submission.challenge.level }}</h2>
-        <div class="button-group">
+        <div class="title-row-buttons">
             <span class="status progress-btn" id="progressBtn" onclick="toggleAttempts()">Progress</span>
             <a href="/challenge?challenge_id={{ submission.challenge.id }}&edit=1" class="status improve-btn">Improve</a>
         </div>
@@ -257,7 +272,7 @@ ul li:before {
         Level {{ submission.challenge.level }} • {{ submission.created_at }}
     </div>
 
-    <div class="stats">
+    <div class="progress-stats">
         <div class="stat"><strong>{{ submission.attempt_number }}</strong>Attempt</div>
         <div class="stat"><strong>{{ 'Yes' if submission.is_correct else 'No' }}</strong>Correct</div>
         <div class="stat"><strong>#{{ submission.id }}</strong>ID</div>
@@ -265,16 +280,7 @@ ul li:before {
 
     <div class="section">
         <h3>Challenge</h3>
-        <div style="
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            border-radius: 8px;
-            padding: 16px;
-            color: #ccc;
-            font-size: 14px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-        ">{{ submission.challenge.description }}</div>
+        <div class="section-content">{{ submission.challenge.description }}</div>
     </div>
 
     <div class="section">
@@ -292,7 +298,7 @@ ul li:before {
     </div>
 
     <!-- All Attempts Container -->
-    <div class="attempts-container" id="attemptsContainer" style="display: none;">
+    <div class="progress-attempts-container" id="attemptsContainer" style="display: none;">
         <!-- Attempts will be loaded here via JavaScript -->
     </div>
 
@@ -342,12 +348,12 @@ function loadAllAttempts() {
                 container.appendChild(panel);
             });
         } else {
-            container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">No attempts found</div>';
+            container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px; word-wrap: break-word;">No attempts found</div>';
         }
     })
     .catch(error => {
         console.error('Error loading attempts:', error);
-        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ff4444; padding: 20px;">Error loading attempts</div>';
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ff4444; padding: 20px; word-wrap: break-word;">Error loading attempts</div>';
     });
 }
 
