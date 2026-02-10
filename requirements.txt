@@ -9,3 +9,6 @@ python-jose[cryptography]>=3.3
 openai>=1.0
 python-multipart
 
+# Postgres driver for production (Railway)
+psycopg2-binary>=2.9
+

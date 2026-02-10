@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from app.web.debug_routes import router as debug_router
@@ -12,9 +14,12 @@ from app.submissions.routes import router as submission_router  # 🔥 ADD THIS
 
 
 app = FastAPI(title="CodeGuru", version="0.1.0")
-app.include_router(debug_router)
 
-# Create database tables
+# Only expose debug routes (including diagnostics) when explicitly enabled.
+if os.getenv("ENABLE_DEBUG_ROUTES", "0") == "1":
+    app.include_router(debug_router)
+
+# Create database tables (still useful in dev; in production prefer Alembic)
 Base.metadata.create_all(bind=engine)
 
 # Include routers
