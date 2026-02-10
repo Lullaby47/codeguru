@@ -64,3 +64,29 @@ def login(
     token = create_access_token({"sub": user.username})
     print("[AUTH] Login successful for:", user.username, flush=True)
     return {"access_token": token}
+
+
+# ------------------------------------------------------------------
+# Safe redirects for accidental browser hits on API endpoints
+# ------------------------------------------------------------------
+
+@router.get("/login", include_in_schema=False)
+def login_get_redirect():
+    """
+    If a browser is accidentally sent to GET /auth/login,
+    redirect it to the real HTML login page instead of 405.
+    """
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/login", status_code=303)
+
+
+@router.get("/signup", include_in_schema=False)
+def signup_get_redirect():
+    """
+    If a browser is accidentally sent to GET /auth/signup,
+    redirect it to the real HTML signup page instead of 405.
+    """
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/signup", status_code=303)
