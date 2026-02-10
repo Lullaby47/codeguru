@@ -1,0 +1,60 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#1e1e1e"/>
+  
+  <!-- Gradient overlay -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff66;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#00ff66;stop-opacity:0.05" />
+    </linearGradient>
+    <rect width="1200" height="630" fill="url(#grad)"/>
+  </defs>
+  
+  <!-- Grid pattern (subtle) -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3e3e3e" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  
+  <!-- Main content container -->
+  <g transform="translate(100, 150)">
+    <!-- CodeGuru Logo/Title -->
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="#00ff66" letter-spacing="8">
+      CODEGURU
+    </text>
+    
+    <!-- Subtitle -->
+    <text x="0" y="80" font-family="Arial, sans-serif" font-size="32" fill="#cccccc" letter-spacing="2">
+      Secure Portal
+    </text>
+    
+    <!-- Description -->
+    <text x="0" y="160" font-family="Arial, sans-serif" font-size="24" fill="#999999" letter-spacing="1">
+      Master coding challenges • Track progress • Level up your skills
+    </text>
+    
+    <!-- Accent line -->
+    <line x1="0" y1="200" x2="400" y2="200" stroke="#00ff66" stroke-width="4"/>
+    
+    <!-- Icon/Button representation -->
+    <g transform="translate(800, 50)">
+      <!-- Button background -->
+      <rect x="0" y="0" width="200" height="200" rx="20" fill="#252526" stroke="#00ff66" stroke-width="3"/>
+      
+      <!-- Code icon representation -->
+      <text x="100" y="120" font-family="Arial, sans-serif" font-size="80" fill="#00ff66" text-anchor="middle">
+        &lt;/&gt;
+      </text>
+    </g>
+  </g>
+  
+  <!-- Bottom accent -->
+  <rect x="0" y="580" width="1200" height="50" fill="#00ff66" opacity="0.2"/>
+  <text x="100" y="610" font-family="Arial, sans-serif" font-size="18" fill="#00ff66" letter-spacing="4">
+    OFFICIAL PORTAL
+  </text>
+</svg>
+
