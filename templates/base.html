@@ -259,11 +259,21 @@
     }
 
     // Logout Confirmation Modal
+    // Handle both click and touch events for mobile compatibility
     const logoutLink = document.querySelector(".logout-link");
     if (logoutLink) {
-        logoutLink.addEventListener("click", function(e) {
+        // Prevent default link behavior
+        const handleLogout = function(e) {
             e.preventDefault();
+            e.stopPropagation();
             showLogoutConfirmation();
+        };
+        
+        // Add both click and touchstart events for mobile
+        logoutLink.addEventListener("click", handleLogout);
+        logoutLink.addEventListener("touchend", function(e) {
+            e.preventDefault();
+            handleLogout(e);
         });
     }
 

@@ -275,6 +275,9 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
         justify-content: center;
         min-width: 44px;
         min-height: 44px;
+        touch-action: manipulation; /* Improve touch responsiveness */
+        -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
+        cursor: pointer;
     }
 
     .logout-icon {
@@ -294,12 +297,14 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
         justify-content: center;
         transition: all 0.2s ease;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        pointer-events: none; /* Allow clicks to pass through to parent link */
     }
 
     .logout-symbol {
         width: 12px;
         height: 12px;
         border-width: 1.5px;
+        pointer-events: none; /* Allow clicks to pass through */
     }
 
     .logout-symbol::before {
