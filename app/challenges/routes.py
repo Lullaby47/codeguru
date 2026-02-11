@@ -448,47 +448,51 @@ def get_next_challenge(
     """
     from sqlalchemy import distinct
 
-    # Global pool: active pool challenges at this level only. Never exclude by other users' progress.
+    # Global pool: active pool challenges. Never exclude by other users' progress.
     # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
-    # When filtering by category, also check next level to give users access to more challenges
     if main_category and main_category.strip():
-        # When category is selected, check both current level and next level
+        # When category is selected, check current level and next level for that category
         category_normalized = main_category.strip()
         print(f"[DEBUG] Searching for category: '{category_normalized}' at level {level} and {level + 1}", flush=True)
         
-        # Get challenges at current level AND next level for this category
-        q = db.query(Challenge).filter(
-            Challenge.level.in_([level, level + 1]),  # Check both current and next level
+        # Get ALL pool challenges with this category (any level) first to debug
+        all_pool_challenges = db.query(Challenge).filter(
             Challenge.challenge_date.is_(None),  # Only pool challenges
             or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
-        )
-        all_challenges_before_filter = q.all()
+        ).all()
         
-        # Debug: print all categories found
-        unique_categories = set()
-        for ch in all_challenges_before_filter:
+        # Debug: show all categories in database
+        all_categories_in_db = set()
+        for ch in all_pool_challenges:
             if ch.main_category:
-                unique_categories.add(ch.main_category.strip())
-        print(f"[DEBUG] Available categories at level {level} and {level + 1}: {sorted(unique_categories)}", flush=True)
+                all_categories_in_db.add(ch.main_category.strip())
+        print(f"[DEBUG] All categories in database (pool challenges): {sorted(all_categories_in_db)}", flush=True)
         
-        # Filter in Python to handle exact case-insensitive match with trimmed values
-        all_challenges = [
-            ch for ch in all_challenges_before_filter
+        # Filter by category name (case-insensitive, trimmed)
+        category_matched = [
+            ch for ch in all_pool_challenges
             if ch.main_category and ch.main_category.strip().lower() == category_normalized.lower()
         ]
-        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' (searching for: '{category_normalized.lower()}') out of {len(all_challenges_before_filter)} total at levels {level} and {level + 1}", flush=True)
+        print(f"[DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' (all levels)", flush=True)
         
-        # Debug: show what categories and levels the matching challenges actually have
+        # Now filter by level (current level or next level)
+        all_challenges = [
+            ch for ch in category_matched
+            if ch.level == level or ch.level == level + 1
+        ]
+        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' at level {level} or {level + 1}", flush=True)
+        
+        # Debug: show what we found
         if all_challenges:
-            actual_info = [(ch.main_category.strip(), ch.level) for ch in all_challenges[:5]]
-            print(f"[DEBUG] Sample matching challenges (category, level): {actual_info}", flush=True)
+            actual_info = [(ch.id, ch.main_category.strip(), ch.level, ch.title[:30]) for ch in all_challenges[:5]]
+            print(f"[DEBUG] Sample matching challenges (id, category, level, title): {actual_info}", flush=True)
         else:
-            print(f"[DEBUG] No challenges found! Checking if category name matches...", flush=True)
-            # Show what categories actually exist
-            for cat in sorted(unique_categories):
-                print(f"[DEBUG]   Available category: '{cat}' (lowercase: '{cat.lower()}')", flush=True)
+            # Show what levels the category-matched challenges are at
+            if category_matched:
+                levels_found = sorted(set(ch.level for ch in category_matched))
+                print(f"[DEBUG] Category '{category_normalized}' exists but challenges are at levels: {levels_found} (user is at level {level})", flush=True)
     else:
         # No category filter - only get challenges at current level
         q = db.query(Challenge).filter(
@@ -1492,3 +1496,4 @@ def admin_delete_challenge(
     db.commit()
     
     return {"message": "Challenge deleted successfully", "challenge_id": challenge_id}
+

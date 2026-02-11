@@ -288,21 +288,21 @@ def daily_challenge(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Get list of main categories that have challenges at user's level or next level
-    # This ensures categories shown actually have challenges the user can access
+    # Get list of ALL main categories that have pool challenges (regardless of level)
+    # Show all categories - filtering by level happens when user selects a category
     main_categories = (
         db.query(distinct(Challenge.main_category))
         .filter(
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
-            Challenge.challenge_date.is_(None),  # Only pool challenges
+            Challenge.challenge_date.is_(None),  # Only pool challenges (not daily challenges)
             or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
-            Challenge.level.in_([user.level, user.level + 1]),  # Current level or next level
         )
         .order_by(Challenge.main_category)
         .all()
     )
     main_categories = [cat[0] for cat in main_categories if cat[0]]
+    print(f"[WEB DEBUG] Found {len(main_categories)} categories: {main_categories}", flush=True)
     
     challenge = None
     
