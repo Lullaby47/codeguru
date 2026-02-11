@@ -222,8 +222,8 @@
                 if (levels.length === 0) {
                     container.innerHTML = '<div class="profile-level-empty">No categories yet</div>';
                 } else {
-                    container.innerHTML = levels.map(item => 
-                        `<div class="profile-level-item">${item.main_category}: ${item.level}</div>`
+                    container.innerHTML = levels.map(item =>
+                        `<div class="profile-level-item">(${item.main_category}) - (Level ${item.level})</div>`
                     ).join("");
                 }
             })
