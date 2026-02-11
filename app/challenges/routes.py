@@ -456,7 +456,15 @@ def get_next_challenge(
         or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
     )
     if main_category and main_category.strip():
-        q = q.filter(func.lower(Challenge.main_category) == main_category.strip().lower())
+        # Normalize the category: strip whitespace and use case-insensitive comparison
+        # Handle NULL values and trim whitespace from database values
+        category_normalized = main_category.strip().lower()
+        # Use func.lower with func.trim to handle whitespace, and ensure main_category is not NULL
+        q = q.filter(
+            Challenge.main_category.isnot(None),
+            Challenge.main_category != "",
+            func.lower(func.replace(Challenge.main_category, ' ', '')) == func.lower(func.replace(category_normalized, ' ', ''))
+        )
     all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).

@@ -311,8 +311,11 @@ def daily_challenge(
             challenge = None
     elif main_category:
         # If main_category is provided, get a challenge from that category
+        # URL encode the category to handle spaces and special characters
+        from urllib.parse import quote
+        encoded_category = quote(main_category.strip())
         r = requests.get(
-            f"{_api_base(request)}/challenge/next/{user.level}?main_category={main_category}",
+            f"{_api_base(request)}/challenge/next/{user.level}?main_category={encoded_category}",
             cookies=request.cookies
         )
         if r.status_code == 200:
