@@ -445,8 +445,17 @@ def get_next_challenge(
     Get the next unsolved challenge for the CURRENT USER at a specific level.
     Pool is global; exclusion is per-user only (submissions scoped by user_id).
     Optional main_category filters pool to that category (for Learn More category picker).
+    
+    NOTE: When main_category is provided, uses per-category level instead of global level.
     """
     from sqlalchemy import distinct
+    from app.auth.category_level import get_user_category_level
+    
+    # If category is provided, use per-category level; otherwise use provided level
+    if main_category and main_category.strip():
+        category_level = get_user_category_level(db, user.id, main_category.strip())
+        level = category_level  # Override with category-specific level
+        print(f"[API DEBUG] Using per-category level: {category_level} for category '{main_category.strip()}'", flush=True)
 
     # Global pool: active pool challenges. Never exclude by other users' progress.
     # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
@@ -1243,28 +1252,70 @@ def submit_challenge(
 
     # Level progression: follow the rule (solved_count >= current_level)
     # Only check if submission is correct
+    # NOTE: Now uses per-category level instead of global level
+    from app.auth.category_level import get_user_category_level, increment_user_category_level
+    
     level_up = False
-    old_level = user.level
+    old_level = None
+    new_level = None
+    category_for_level = None
+    
     if is_correct:
-        current_level = user.level
-        # Count distinct challenges solved correctly at user's current level
-        solved_count = (
-            db.query(func.count(distinct(Submission.challenge_id)))
-            .join(Challenge, Challenge.id == Submission.challenge_id)
-            .filter(
-                Submission.user_id == user.id,
-                Submission.is_correct == 1,
-                Challenge.level == current_level,
-            )
-            .scalar()
-        ) or 0
-
-        # Check if user can level up: solved challenges >= current level
-        if solved_count >= current_level:
-            user.level = current_level + 1
-            db.add(user)
-            db.commit()
-            level_up = True
+        # Get challenge's category for per-category level tracking
+        challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
+        
+        if challenge_category:
+            # Use per-category level
+            current_level = get_user_category_level(db, user.id, challenge_category)
+            old_level = current_level
+            
+            # Count distinct challenges solved correctly at user's current level IN THIS CATEGORY
+            solved_count = (
+                db.query(func.count(distinct(Submission.challenge_id)))
+                .join(Challenge, Challenge.id == Submission.challenge_id)
+                .filter(
+                    Submission.user_id == user.id,
+                    Submission.is_correct == 1,
+                    Challenge.level == current_level,
+                    Challenge.main_category == challenge_category,
+                )
+                .scalar()
+            ) or 0
+            
+            print(f"[API DEBUG] Category '{challenge_category}': solved {solved_count}/{current_level} challenges at level {current_level}", flush=True)
+            
+            # Check if user can level up: solved challenges >= current level
+            if solved_count >= current_level:
+                progress = increment_user_category_level(db, user.id, challenge_category)
+                new_level = progress.level
+                level_up = True
+                category_for_level = challenge_category
+                print(f"[API DEBUG] Category '{challenge_category}' level up: {old_level} -> {new_level}", flush=True)
+            else:
+                new_level = current_level
+        else:
+            # Fallback to global level if challenge has no category (daily challenges without category)
+            current_level = user.level
+            old_level = current_level
+            solved_count = (
+                db.query(func.count(distinct(Submission.challenge_id)))
+                .join(Challenge, Challenge.id == Submission.challenge_id)
+                .filter(
+                    Submission.user_id == user.id,
+                    Submission.is_correct == 1,
+                    Challenge.level == current_level,
+                )
+                .scalar()
+            ) or 0
+            
+            if solved_count >= current_level:
+                user.level = current_level + 1
+                db.add(user)
+                db.commit()
+                new_level = user.level
+                level_up = True
+            else:
+                new_level = current_level
 
     debug_print(f"Returning response - mentor_hint={'SET' if mentor_hint else 'None'}")
     logger.info(f"[MENTOR HINT] Returning response - mentor_hint={'SET' if mentor_hint else 'None'}")
@@ -1277,9 +1328,10 @@ def submit_challenge(
         "first_time_global": first_time_global,
         "attempt_number": attempt_number,
         "is_retry": bool(is_retry),
-        "new_level": user.level,  # Send new level back
+        "new_level": new_level if new_level is not None else user.level,  # Send new level back
         "level_up": level_up,  # Flag indicating if user leveled up
-        "old_level": old_level,  # Previous level before this submission
+        "old_level": old_level if old_level is not None else user.level,  # Previous level before this submission
+        "category": category_for_level,  # Category that leveled up (if any)
         "mentor_hint": mentor_hint,  # Mentor hint if triggered (None otherwise)
     }
 
