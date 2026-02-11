@@ -457,13 +457,13 @@ def get_next_challenge(
     )
     if main_category and main_category.strip():
         # Normalize the category: strip whitespace and use case-insensitive comparison
-        # Handle NULL values and trim whitespace from database values
-        category_normalized = main_category.strip().lower()
-        # Use func.lower with func.trim to handle whitespace, and ensure main_category is not NULL
+        # Handle NULL values and ensure exact match (case-insensitive, trimmed)
+        category_normalized = main_category.strip()
+        # Filter by case-insensitive comparison, ensuring main_category is not NULL or empty
         q = q.filter(
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
-            func.lower(func.replace(Challenge.main_category, ' ', '')) == func.lower(func.replace(category_normalized, ' ', ''))
+            func.lower(Challenge.main_category) == category_normalized.lower()
         )
     all_challenges = q.all()
 
