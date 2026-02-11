@@ -867,9 +867,10 @@ def force_learning_page(
     db: Session = Depends(get_db),
 ):
     """
-    Learn More: user picks main category, then gets a pool challenge for their level.
-    - No main_category: show category picker (categories that have pool challenges).
-    - With main_category: fetch next unsolved challenge in that category using per-category level.
+    Learn More: user picks main category, then gets a challenge from the NEXT level
+    in that category so they can level up faster.
+    - No main_category: show category picker.
+    - With main_category: fetch challenge at category_level + 1 (next level).
     """
     act = or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None))
     # Primary source: categories with pool challenges
@@ -905,11 +906,12 @@ def force_learning_page(
     # If user already chose a category, try to get next challenge in that category
     if main_category and main_category.strip():
         category_level = get_user_category_level(db, user.id, main_category.strip())
-        print(f"[WEB DEBUG] Force learning: category '{main_category.strip()}' level {category_level}", flush=True)
+        next_level = category_level + 1  # Force learning gives NEXT level challenges
+        print(f"[WEB DEBUG] Force learning: category '{main_category.strip()}' current level {category_level}, fetching level {next_level}", flush=True)
         try:
             r = requests.get(
-                f"{_api_base(request)}/challenge/next/{category_level}",
-                params={"main_category": main_category.strip()},
+                f"{_api_base(request)}/challenge/next/{next_level}",
+                params={"main_category": main_category.strip(), "force_next_level": "true"},
                 cookies=request.cookies,
                 timeout=10,
             )

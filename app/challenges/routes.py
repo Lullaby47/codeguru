@@ -452,6 +452,7 @@ def get_solved_count(
 def get_next_challenge(
     level: int,
     main_category: str = Query(None),
+    force_next_level: bool = Query(False),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -460,16 +461,22 @@ def get_next_challenge(
     Pool is global; exclusion is per-user only (submissions scoped by user_id).
     Optional main_category filters pool to that category (for Learn More category picker).
     
-    NOTE: When main_category is provided, uses per-category level instead of global level.
+    NOTE: When main_category is provided, uses per-category level instead of global level,
+    UNLESS force_next_level=true — then the level from the URL path is used as-is
+    (used by "Learn More" to fetch challenges from the next level).
     """
     from sqlalchemy import distinct
     from app.auth.category_level import get_user_category_level
     
     # If category is provided, use per-category level; otherwise use provided level
+    # BUT if force_next_level is set, trust the level from URL (force learning flow)
     if main_category and main_category.strip():
         category_level = get_user_category_level(db, user.id, main_category.strip())
-        level = category_level  # Override with category-specific level
-        print(f"[API DEBUG] Using per-category level: {category_level} for category '{main_category.strip()}'", flush=True)
+        if force_next_level:
+            print(f"[API DEBUG] Force next level: using passed level {level} (category level is {category_level}) for category '{main_category.strip()}'", flush=True)
+        else:
+            level = category_level  # Override with category-specific level
+            print(f"[API DEBUG] Using per-category level: {category_level} for category '{main_category.strip()}'", flush=True)
 
     # Global pool: active pool challenges. Never exclude by other users' progress.
     # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
@@ -1069,11 +1076,11 @@ def get_challenge_by_id(
         user_level = get_user_category_level(db, user.id, challenge_category)
     else:
         user_level = user.level
-    if challenge.level > user_level + 1:
+    if challenge.level > user_level + 2:
         cat_msg = f" for {challenge_category}" if challenge_category else ""
         raise HTTPException(
             status_code=403,
-            detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level{cat_msg} is {user_level}."
+            detail=f"Level {challenge.level} challenge requires level {challenge.level - 2} or higher. Your current level{cat_msg} is {user_level}."
         )
 
     return {
