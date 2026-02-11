@@ -691,50 +691,99 @@ def logout_perform(request: Request):
 @router.get("/force-learning", response_class=HTMLResponse)
 def force_learning_page(
     request: Request,
+    main_category: str = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Show force-learning (pool challenges) page.
-    If no challenges are available, show a friendly message instead of JSON 404.
+    Learn More: user picks main category, then gets a pool challenge for their level.
+    - No main_category: show category picker (categories that have pool challenges at user's level).
+    - With main_category: fetch next unsolved challenge in that category; redirect to challenge or show empty.
     """
-    # Check if there are any pool challenges available for the user's level
-    try:
-        r = requests.get(
-            f"{_api_base(request)}/challenge/next/{user.level}",
-            cookies=request.cookies,
-            timeout=10,
+    from sqlalchemy import or_
+    level = user.level
+    # Pool challenges at this level (same filter as API: active or NULL is_active)
+    act = or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None))
+    pool_at_level = (
+        db.query(Challenge.main_category)
+        .filter(
+            Challenge.level == level,
+            Challenge.challenge_date.is_(None),
+            act,
+            Challenge.main_category.isnot(None),
+            Challenge.main_category != "",
         )
-        
-        if r.status_code == 200:
-            result = r.json()
-            challenge_id = result.get("challenge_id")
-            
-            # If a challenge is available, redirect to challenge page with challenge_id
-            if challenge_id:
+        .distinct()
+        .all()
+    )
+    main_categories = [r[0] for r in pool_at_level if r[0] and r[0].strip()]
+
+    # If user already chose a category, try to get next challenge in that category
+    if main_category and main_category.strip():
+        try:
+            r = requests.get(
+                f"{_api_base(request)}/challenge/next/{level}",
+                params={"main_category": main_category.strip()},
+                cookies=request.cookies,
+                timeout=10,
+            )
+            if r.status_code == 200:
+                result = r.json()
+                challenge_id = result.get("challenge_id")
+                if challenge_id:
+                    return RedirectResponse(
+                        url=f"/challenge?challenge_id={challenge_id}",
+                        status_code=303,
+                    )
+        except Exception as exc:
+            print(f"[WEB] /force-learning API error: {repr(exc)}", flush=True)
+        # No challenge in this category - show empty with option to pick another
+        return templates.TemplateResponse(
+            "force_learning_empty.html",
+            {
+                "request": request,
+                "user": user,
+                "main_categories": main_categories,
+                "chosen_category": main_category.strip(),
+            },
+        )
+
+    # No category chosen: show category picker (or try any category and redirect)
+    if not main_categories:
+        return templates.TemplateResponse(
+            "force_learning_empty.html",
+            {
+                "request": request,
+                "user": user,
+                "main_categories": [],
+                "chosen_category": None,
+            },
+        )
+    # Single category: auto-use it and redirect if we get a challenge
+    if len(main_categories) == 1:
+        try:
+            r = requests.get(
+                f"{_api_base(request)}/challenge/next/{level}",
+                params={"main_category": main_categories[0]},
+                cookies=request.cookies,
+                timeout=10,
+            )
+            if r.status_code == 200 and r.json().get("challenge_id"):
                 return RedirectResponse(
-                    url=f"/challenge?challenge_id={challenge_id}",
-                    status_code=303
+                    url=f"/challenge?challenge_id={r.json()['challenge_id']}",
+                    status_code=303,
                 )
-        
-        # No challenges available - show friendly message
-        return templates.TemplateResponse(
-            "force_learning_empty.html",
-            {
-                "request": request,
-                "user": user,
-            },
-        )
-    except Exception as exc:
-        # On any error (network, API down, etc.), show friendly message
-        print(f"[WEB] /force-learning error: {repr(exc)}", flush=True)
-        return templates.TemplateResponse(
-            "force_learning_empty.html",
-            {
-                "request": request,
-                "user": user,
-            },
-        )
+        except Exception:
+            pass
+    # Show category picker
+    return templates.TemplateResponse(
+        "force_learning_choose_category.html",
+        {
+            "request": request,
+            "user": user,
+            "main_categories": main_categories,
+        },
+    )
 
 
 # ======================================================
@@ -867,6 +916,84 @@ def admin_create_challenge_submit(
             "edit_mode": False,
             "error": None,
             "success": "Challenge created successfully.",
+        },
+    )
+
+
+@router.get("/admin/challenge/edit/{challenge_id}", response_class=HTMLResponse)
+def admin_edit_challenge_page(
+    request: Request,
+    challenge_id: int,
+    user: User = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Show the admin challenge edit page (Rewrite button from list)."""
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not challenge:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    today = date.today().isoformat()
+    return templates.TemplateResponse(
+        "admin_challenge.html",
+        {
+            "request": request,
+            "user": user,
+            "challenge": challenge,
+            "today": today,
+            "edit_mode": True,
+            "error": None,
+            "success": None,
+        },
+    )
+
+
+@router.post("/admin/challenge/update/{challenge_id}", response_class=HTMLResponse)
+def admin_update_challenge_submit(
+    request: Request,
+    challenge_id: int,
+    level: int = Form(...),
+    title: str = Form(...),
+    description: str = Form(...),
+    expected_output: str = Form(...),
+    challenge_date: str = Form(None),
+    main_category: str = Form(...),
+    sub_category: str = Form(...),
+    stage_order: int = Form(1),
+    user: User = Depends(get_admin),
+    db: Session = Depends(get_db),
+):
+    """Update an existing challenge (form submit from edit page)."""
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not challenge:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    parsed_date = None
+    if challenge_date and challenge_date.strip():
+        try:
+            parsed_date = date.fromisoformat(challenge_date)
+        except ValueError:
+            pass
+    challenge.level = level
+    challenge.title = title
+    challenge.description = description
+    challenge.expected_output = expected_output
+    challenge.challenge_date = parsed_date
+    challenge.main_category = main_category.strip()
+    challenge.sub_category = sub_category.strip()
+    challenge.stage_order = stage_order
+    db.add(challenge)
+    db.commit()
+    today = date.today().isoformat()
+    return templates.TemplateResponse(
+        "admin_challenge.html",
+        {
+            "request": request,
+            "user": user,
+            "challenge": challenge,
+            "today": today,
+            "edit_mode": True,
+            "error": None,
+            "success": "Challenge updated successfully.",
         },
     )
 

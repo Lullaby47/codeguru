@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Learn More — Choose Category{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">Learn More</h1>
+        <p class="auth-subtitle" style="margin-bottom: 24px;">
+            Choose a category to get a new challenge at your level (Level {{ user.level }}).
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+            {% for cat in main_categories %}
+            <a href="/force-learning?main_category={{ cat | urlencode }}" class="form-button" style="display: block; text-align: center; padding: 14px 24px; text-decoration: none;">
+                {{ cat }}
+            </a>
+            {% endfor %}
+        </div>
+        <div style="text-align: center; margin-top: 28px;">
+            <a href="/dashboard" style="color: #888; font-size: 14px; text-decoration: none;">← Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

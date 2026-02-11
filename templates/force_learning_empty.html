@@ -1,16 +1,33 @@
 {% extends "base.html" %}
 
-{% block title %}Force Learning — CodeGuru{% endblock %}
+{% block title %}Learn More — CodeGuru{% endblock %}
 
 {% block content %}
 <div class="auth-container">
     <div class="auth-card">
-        <h1 class="auth-title">Force Learning</h1>
+        <h1 class="auth-title">Learn More</h1>
         <p class="auth-subtitle" style="margin-bottom: 24px;">
-            Please wait. The owner will add more questions soon.
+            {% if chosen_category %}
+            No unsolved questions left in <strong>{{ chosen_category }}</strong> for your level. Try another category or ask an admin to add more pool questions.
+            {% else %}
+            No pool questions available for your level yet. Ask an admin or co-admin to add more questions to the pool for Level {{ user.level }}.
+            {% endif %}
         </p>
-        <div style="text-align: center; margin-top: 32px;">
-            <a href="/dashboard" class="form-button" style="display: inline-block; width: auto; padding: 14px 32px;">
+        {% if main_categories and main_categories|length > 0 %}
+        <p style="font-size: 13px; color: #888; margin-bottom: 12px;">Try another category:</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+            {% for cat in main_categories %}
+            {% if cat != chosen_category %}
+            <a href="/force-learning?main_category={{ cat | urlencode }}" style="display: block; padding: 10px 16px; background: rgba(0,255,102,0.1); color: #00ff66; border-radius: 8px; text-decoration: none; text-align: center;">{{ cat }}</a>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div style="text-align: center; margin-top: 16px;">
+            <a href="/force-learning" class="form-button" style="display: inline-block; width: auto; padding: 12px 24px; margin-right: 8px;">
+                Choose category
+            </a>
+            <a href="/dashboard" style="display: inline-block; padding: 12px 24px; color: #888; font-size: 14px;">
                 Back to Dashboard
             </a>
         </div>

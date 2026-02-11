@@ -437,25 +437,27 @@ def get_solved_count(
 @router.get("/next/{level}")
 def get_next_challenge(
     level: int,
+    main_category: str = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """
     Get the next unsolved challenge for the CURRENT USER at a specific level.
     Pool is global; exclusion is per-user only (submissions scoped by user_id).
+    Optional main_category filters pool to that category (for Learn More category picker).
     """
     from sqlalchemy import distinct
 
     # Global pool: active pool challenges at this level only. Never exclude by other users' progress.
-    all_challenges = (
-        db.query(Challenge)
-        .filter(
-            Challenge.level == level,
-            Challenge.challenge_date.is_(None),  # Only pool challenges (Learn More / Force Learning)
-            Challenge.is_active.is_(True),
-        )
-        .all()
+    # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
+    q = db.query(Challenge).filter(
+        Challenge.level == level,
+        Challenge.challenge_date.is_(None),  # Only pool challenges (Learn More / Force Learning)
+        or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
     )
+    if main_category and main_category.strip():
+        q = q.filter(func.lower(Challenge.main_category) == main_category.strip().lower())
+    all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
     solved_challenge_ids = (
@@ -504,7 +506,7 @@ def get_next_challenge(
             .filter(
                 Challenge.level == next_level,
                 Challenge.challenge_date.is_(None),
-                Challenge.is_active.is_(True),
+                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             )
             .all()
         )
@@ -716,7 +718,7 @@ def get_today_challenge(
         .filter(
             Challenge.challenge_date == date.today(),
             Challenge.level == target_level,
-            Challenge.is_active.is_(True),
+            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
         )
         .all()
     )
@@ -747,7 +749,7 @@ def get_today_challenge(
             .filter(
                 Challenge.challenge_date == date.today(),
                 Challenge.level == user.level,
-                Challenge.is_active.is_(True),
+                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             )
             .all()
         )
@@ -929,12 +931,13 @@ def submit_challenge(
             target_level = user.level + 1
     
     # Get active challenge for today at target level (or current level if no next level challenge)
+    act = or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None))
     challenge = (
         db.query(Challenge)
         .filter(
             Challenge.challenge_date == date.today(),
             Challenge.level == target_level,
-            Challenge.is_active.is_(True),
+            act,
         )
         .first()
     )
@@ -946,7 +949,7 @@ def submit_challenge(
             .filter(
                 Challenge.challenge_date == date.today(),
                 Challenge.level == user.level,
-                Challenge.is_active.is_(True),
+                act,
             )
             .first()
         )
@@ -957,7 +960,7 @@ def submit_challenge(
             db.query(Challenge)
             .filter(
                 Challenge.challenge_date == date.today(),
-                Challenge.is_active.is_(True),
+                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             )
             .first()
         )
