@@ -1416,3 +1416,25 @@ def admin_list_challenges(
         })
 
     return {"challenges": result}
+
+
+# ======================================================
+# ADMIN – DELETE CHALLENGE
+# ======================================================
+@router.delete("/admin/delete/{challenge_id}")
+def admin_delete_challenge(
+    challenge_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_admin),
+):
+    """Delete a challenge (admin and co-admin only)."""
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    # Delete the challenge
+    db.delete(challenge)
+    db.commit()
+    
+    return {"message": "Challenge deleted successfully", "challenge_id": challenge_id}
