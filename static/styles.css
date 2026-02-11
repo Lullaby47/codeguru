@@ -1165,24 +1165,6 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 /* Logout Confirmation Modal */
-.logout-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    animation: fadeIn 0.3s ease;
-    cursor: pointer;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
 .logout-modal {
     background: linear-gradient(135deg, #252526 0%, #2d2d30 100%);
     border: 2px solid #ff4444;
