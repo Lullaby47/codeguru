@@ -61,6 +61,18 @@ try:
 except Exception as e:
     print("[DB] submissions migration:", repr(e), flush=True)
 
+# Ensure submission_insights.ai_hint exists (AI hints caching)
+try:
+    if "submission_insights" in _inspector.get_table_names():
+        _si_cols = [c["name"] for c in _inspector.get_columns("submission_insights")]
+        if "ai_hint" not in _si_cols:
+            with engine.connect() as _conn:
+                _conn.execute(_text("ALTER TABLE submission_insights ADD COLUMN ai_hint TEXT"))
+                _conn.commit()
+            print("[DB] Added submission_insights.ai_hint", flush=True)
+except Exception as e:
+    print("[DB] submission_insights migration:", repr(e), flush=True)
+
 # Ensure challenges.is_active exists (per-user pool: never remove questions on solve; filter by is_active only)
 try:
     from sqlalchemy import inspect, text
@@ -79,6 +91,13 @@ try:
             print("[DB] Added challenges.is_active column for per-user pool", flush=True)
 except Exception as e:
     print("[DB] Optional is_active migration:", repr(e), flush=True)
+
+# Log OpenAI key presence once at startup
+try:
+    from app.core.config import OPENAI_API_KEY as _oai_key
+    print(f"[AI HINT] OPENAI_API_KEY present: {bool(_oai_key and _oai_key.strip())}", flush=True)
+except Exception:
+    print("[AI HINT] OPENAI_API_KEY present: False", flush=True)
 
 # Include routers
 app.include_router(auth_router)

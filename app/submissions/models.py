@@ -59,6 +59,9 @@ class SubmissionInsight(Base):
     # 🪜 Improvement suggestion
     improvement_hint = Column(Text, default="")
 
+    # 🤖 AI-generated contextual hint for wrong answers (cached)
+    ai_hint = Column(Text, nullable=True, default=None)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

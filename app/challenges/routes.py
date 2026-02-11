@@ -1130,6 +1130,38 @@ def submit_challenge(
         print(f"[INSIGHT] submission_id={submission.id} inserted", flush=True)
 
     # ------------------------------------
+    # 🤖 AI HINT (every wrong submission — cached in insight)
+    # ------------------------------------
+    ai_hint_text = None
+    ai_hint_is_ai = False
+    if is_correct == 0:
+        try:
+            from app.challenges.ai_hints import generate_ai_hint
+            _insight = db.query(SubmissionInsight).filter_by(submission_id=submission.id).one_or_none()
+            if _insight and _insight.ai_hint:
+                ai_hint_text = _insight.ai_hint
+                ai_hint_is_ai = True  # assume cached was AI
+                print(f"[AI HINT] reused cached hint for submission_id={submission.id}", flush=True)
+            else:
+                _error = output if output and output.startswith("Error:") else None
+                ai_hint_text, ai_hint_is_ai = generate_ai_hint(
+                    challenge_title=challenge.title or "",
+                    challenge_prompt=challenge.description or "",
+                    expected_output=challenge.expected_output or "",
+                    user_code=code,
+                    actual_output=output or "",
+                    error_text=_error,
+                )
+                # Cache in DB
+                if _insight and ai_hint_text:
+                    _insight.ai_hint = ai_hint_text
+                    db.commit()
+                src = "AI" if ai_hint_is_ai else "fallback"
+                print(f"[AI HINT] generated ({src}) for submission_id={submission.id}", flush=True)
+        except Exception as _e:
+            print(f"[AI HINT] failed for submission_id={submission.id} reason={_e}", flush=True)
+
+    # ------------------------------------
     # 🎯 MENTOR HINT (on attempts 3, 5, 7, 8, 10, or ≥ 11)
     # ------------------------------------
     mentor_hint = None
@@ -1194,13 +1226,15 @@ def submit_challenge(
         "first_time_global": first_time_global,
         "attempt_number": attempt_number,
         "is_retry": bool(is_retry),
-        "new_level": new_level if new_level is not None else user.level,  # Send new level back
-        "level_up": level_up,  # Flag indicating if user leveled up
-        "old_level": old_level if old_level is not None else user.level,  # Previous level before this submission
-        "category": category_for_level,  # Category that leveled up (if any)
-        "mentor_hint": mentor_hint,  # Mentor hint if triggered (None otherwise)
+        "new_level": new_level if new_level is not None else user.level,
+        "level_up": level_up,
+        "old_level": old_level if old_level is not None else user.level,
+        "category": category_for_level,
+        "mentor_hint": mentor_hint,
         "expected_output": challenge.expected_output or "",
         "actual_output": output[:5000] if output else "",
+        "ai_hint": ai_hint_text,
+        "ai_hint_is_ai": ai_hint_is_ai,
     }
 
 # ======================================================
@@ -1328,6 +1362,37 @@ def submit_force_challenge(
         print(f"[INSIGHT] submission_id={submission.id} inserted", flush=True)
 
     # ------------------------------------
+    # 🤖 AI HINT (every wrong submission — cached in insight)
+    # ------------------------------------
+    ai_hint_text = None
+    ai_hint_is_ai = False
+    if is_correct == 0:
+        try:
+            from app.challenges.ai_hints import generate_ai_hint
+            _insight = db.query(SubmissionInsight).filter_by(submission_id=submission.id).one_or_none()
+            if _insight and _insight.ai_hint:
+                ai_hint_text = _insight.ai_hint
+                ai_hint_is_ai = True
+                print(f"[AI HINT] reused cached hint for submission_id={submission.id}", flush=True)
+            else:
+                _error = output if output and output.startswith("Error:") else None
+                ai_hint_text, ai_hint_is_ai = generate_ai_hint(
+                    challenge_title=challenge.title or "",
+                    challenge_prompt=challenge.description or "",
+                    expected_output=challenge.expected_output or "",
+                    user_code=code,
+                    actual_output=output or "",
+                    error_text=_error,
+                )
+                if _insight and ai_hint_text:
+                    _insight.ai_hint = ai_hint_text
+                    db.commit()
+                src = "AI" if ai_hint_is_ai else "fallback"
+                print(f"[AI HINT] generated ({src}) for submission_id={submission.id}", flush=True)
+        except Exception as _e:
+            print(f"[AI HINT] failed for submission_id={submission.id} reason={_e}", flush=True)
+
+    # ------------------------------------
     # 🎯 MENTOR HINT (on attempts 3, 5, 7, 8, 10, or ≥ 11)
     # ------------------------------------
     mentor_hint = None
@@ -1344,9 +1409,6 @@ def submit_force_challenge(
             debug_print(f"  Output: '{output[:100] if output else None}'")
             debug_print(f"  Expected: '{challenge.expected_output[:100] if challenge.expected_output else None}'")
             
-            # Trigger hint for:
-            # Type A: Syntax/runtime errors (has_error = True)
-            # Type B: Code runs but output is wrong (has_error = False, has_output = True, output != expected)
             output_normalized = normalize_output_text(output)
             expected_normalized = normalize_output_text(challenge.expected_output or "")
             if has_error or (has_output and has_expected and output_normalized != expected_normalized):
@@ -1393,6 +1455,8 @@ def submit_force_challenge(
         "mentor_hint": mentor_hint,
         "expected_output": challenge.expected_output or "",
         "actual_output": output[:5000] if output else "",
+        "ai_hint": ai_hint_text,
+        "ai_hint_is_ai": ai_hint_is_ai,
     }
 
 # ======================================================
