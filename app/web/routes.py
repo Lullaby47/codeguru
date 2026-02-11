@@ -288,21 +288,55 @@ def daily_challenge(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Get list of ALL main categories that have pool challenges (regardless of level)
-    # Show all categories - filtering by level happens when user selects a category
-    main_categories = (
+    # Get list of ALL main categories that have challenges
+    # First, let's check ALL challenges to see what categories exist
+    all_categories_raw = (
+        db.query(Challenge.main_category)
+        .filter(Challenge.main_category.isnot(None))
+        .distinct()
+        .all()
+    )
+    print(f"[WEB DEBUG] Raw categories from DB (all challenges): {[c[0] for c in all_categories_raw if c[0]]}", flush=True)
+    
+    # Check pool challenges specifically
+    pool_categories = (
         db.query(distinct(Challenge.main_category))
         .filter(
             Challenge.main_category.isnot(None),
-            Challenge.main_category != "",
-            Challenge.challenge_date.is_(None),  # Only pool challenges (not daily challenges)
+            Challenge.challenge_date.is_(None),  # Only pool challenges
             or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
         )
         .order_by(Challenge.main_category)
         .all()
     )
-    main_categories = [cat[0] for cat in main_categories if cat[0]]
-    print(f"[WEB DEBUG] Found {len(main_categories)} categories: {main_categories}", flush=True)
+    print(f"[WEB DEBUG] Pool challenge categories: {[c[0] for c in pool_categories if c[0]]}", flush=True)
+    
+    # Also check if there are categories in daily challenges
+    daily_categories = (
+        db.query(distinct(Challenge.main_category))
+        .filter(
+            Challenge.main_category.isnot(None),
+            Challenge.challenge_date.isnot(None),  # Daily challenges
+            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+        )
+        .all()
+    )
+    print(f"[WEB DEBUG] Daily challenge categories: {[c[0] for c in daily_categories if c[0]]}", flush=True)
+    
+    # For now, let's show ALL categories regardless of challenge_date
+    # This ensures categories show up even if they're in daily challenges
+    main_categories = (
+        db.query(distinct(Challenge.main_category))
+        .filter(
+            Challenge.main_category.isnot(None),
+            Challenge.main_category != "",
+            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+        )
+        .order_by(Challenge.main_category)
+        .all()
+    )
+    main_categories = [cat[0] for cat in main_categories if cat[0] and cat[0].strip()]
+    print(f"[WEB DEBUG] Final categories list: {main_categories}", flush=True)
     
     challenge = None
     
