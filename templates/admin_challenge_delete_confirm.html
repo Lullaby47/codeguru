@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Challenge — CodeGuru{% endblock %}
+
+{% block content %}
+<div class="logout-confirm-container">
+    <div class="logout-confirm-card">
+        <h1 class="logout-confirm-title">Delete Challenge</h1>
+        <p class="logout-confirm-message">
+            Are you sure you want to delete "<strong>{{ challenge.title }}</strong>"?<br>
+            <span style="color: #ff4444; font-size: 14px;">This action cannot be undone.</span>
+        </p>
+        
+        <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left;">
+            <div style="color: #ccc; font-size: 13px; margin-bottom: 8px;"><strong>Challenge Details:</strong></div>
+            <div style="color: #999; font-size: 12px; line-height: 1.6;">
+                <div><strong>Level:</strong> {{ challenge.level }}</div>
+                {% if challenge.main_category %}
+                <div><strong>Category:</strong> {{ challenge.main_category }}</div>
+                {% endif %}
+                {% if challenge.sub_category %}
+                <div><strong>Stage:</strong> {{ challenge.sub_category }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <form method="POST" action="/challenge/admin/delete/{{ challenge.id }}" class="logout-confirm-form">
+            <div class="logout-confirm-buttons">
+                <button type="submit" class="logout-confirm-btn-yes" style="background: #ff4444; border-color: #ff4444;">
+                    Yes, Delete
+                </button>
+                <a href="/admin/challenges/list" class="logout-confirm-btn-no">
+                    No, Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

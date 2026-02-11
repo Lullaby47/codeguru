@@ -1030,6 +1030,33 @@ def admin_challenges_list_page(
     )
 
 
+@router.get("/admin/challenge/delete/{challenge_id}", response_class=HTMLResponse)
+def admin_delete_challenge_confirm(
+    challenge_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_admin),
+):
+    """
+    Show delete confirmation page for a challenge.
+    User must click "Yes" to actually delete.
+    """
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    
+    if not challenge:
+        # Challenge not found - redirect to list
+        return RedirectResponse(url="/admin/challenges/list", status_code=303)
+    
+    return templates.TemplateResponse(
+        "admin_challenge_delete_confirm.html",
+        {
+            "request": request,
+            "user": user,
+            "challenge": challenge,
+        },
+    )
+
+
 @router.get("/admin/users", response_class=HTMLResponse)
 def admin_users_page(
     request: Request,

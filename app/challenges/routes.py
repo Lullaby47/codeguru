@@ -1421,7 +1421,7 @@ def admin_list_challenges(
 # ======================================================
 # ADMIN – DELETE CHALLENGE
 # ======================================================
-@router.delete("/admin/delete/{challenge_id}")
+@router.post("/admin/delete/{challenge_id}")
 def admin_delete_challenge(
     challenge_id: int,
     db: Session = Depends(get_db),
