@@ -459,52 +459,95 @@ def get_next_challenge(
         print(f"[API DEBUG] User level: {level}", flush=True)
         print(f"[API DEBUG] User ID: {user.id}", flush=True)
         
-        # Get ALL pool challenges with this category (any level) first to debug
-        print(f"[API DEBUG] Querying pool challenges...", flush=True)
+        # Query BOTH pool and daily challenges when filtering by category
+        # Pool challenges: challenge_date IS NULL
+        # Daily challenges: challenge_date IS NOT NULL
+        print(f"[API DEBUG] Querying pool challenges (challenge_date IS NULL)...", flush=True)
         all_pool_challenges = db.query(Challenge).filter(
-            Challenge.challenge_date.is_(None),  # Only pool challenges
+            Challenge.challenge_date.is_(None),  # Pool challenges
             or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
         ).all()
         print(f"[API DEBUG] Found {len(all_pool_challenges)} total pool challenges with main_category set", flush=True)
         
-        # Debug: show all categories in database with their exact values
+        print(f"[API DEBUG] Querying daily challenges (challenge_date IS NOT NULL)...", flush=True)
+        all_daily_challenges = db.query(Challenge).filter(
+            Challenge.challenge_date.isnot(None),  # Daily challenges
+            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+            Challenge.main_category.isnot(None),
+            Challenge.main_category != "",
+        ).all()
+        print(f"[API DEBUG] Found {len(all_daily_challenges)} total daily challenges with main_category set", flush=True)
+        
+        # Combine pool and daily challenges for category matching
+        all_challenges_with_category = all_pool_challenges + all_daily_challenges
+        
+        # Debug: show all categories in database with their exact values (pool + daily)
         all_categories_in_db = {}
+        pool_categories = {}
+        daily_categories = {}
+        
         for ch in all_pool_challenges:
             if ch.main_category:
                 cat_key = ch.main_category.strip()
-                if cat_key not in all_categories_in_db:
-                    all_categories_in_db[cat_key] = []
-                all_categories_in_db[cat_key].append((ch.id, ch.level, ch.title[:30]))
+                if cat_key not in pool_categories:
+                    pool_categories[cat_key] = []
+                pool_categories[cat_key].append((ch.id, ch.level, ch.title[:30], "POOL"))
         
-        print(f"[API DEBUG] Categories in DB (pool challenges):", flush=True)
+        for ch in all_daily_challenges:
+            if ch.main_category:
+                cat_key = ch.main_category.strip()
+                if cat_key not in daily_categories:
+                    daily_categories[cat_key] = []
+                daily_categories[cat_key].append((ch.id, ch.level, ch.title[:30], "DAILY"))
+        
+        # Merge categories
+        for cat_key in set(list(pool_categories.keys()) + list(daily_categories.keys())):
+            all_categories_in_db[cat_key] = pool_categories.get(cat_key, []) + daily_categories.get(cat_key, [])
+        
+        print(f"[API DEBUG] Categories in DB (pool + daily challenges):", flush=True)
         for cat_name, challenges_list in sorted(all_categories_in_db.items()):
             match_indicator = "✓ MATCH" if cat_name.lower() == category_normalized.lower() else "  "
-            print(f"[API DEBUG]   {match_indicator} '{cat_name}' (repr: {repr(cat_name)}) - {len(challenges_list)} challenges", flush=True)
-            for ch_id, ch_level, ch_title in challenges_list[:3]:
-                print(f"[API DEBUG]      Challenge {ch_id}: level {ch_level}, title: '{ch_title}'", flush=True)
+            pool_count = len([c for c in challenges_list if c[3] == "POOL"])
+            daily_count = len([c for c in challenges_list if c[3] == "DAILY"])
+            print(f"[API DEBUG]   {match_indicator} '{cat_name}' (repr: {repr(cat_name)}) - {len(challenges_list)} total ({pool_count} pool, {daily_count} daily)", flush=True)
+            for ch_id, ch_level, ch_title, ch_type in challenges_list[:3]:
+                print(f"[API DEBUG]      Challenge {ch_id} [{ch_type}]: level {ch_level}, title: '{ch_title}'", flush=True)
         
-        # Filter by category name (case-insensitive, trimmed)
-        print(f"[API DEBUG] Filtering by category name (case-insensitive)...", flush=True)
-        category_matched = []
+        # Filter by category name (case-insensitive, trimmed) from BOTH pool and daily
+        print(f"[API DEBUG] Filtering by category name (case-insensitive) from pool + daily...", flush=True)
+        category_matched_pool = []
+        category_matched_daily = []
+        
         for ch in all_pool_challenges:
             if ch.main_category:
                 db_cat = ch.main_category.strip()
-                db_cat_lower = db_cat.lower()
-                search_cat_lower = category_normalized.lower()
-                if db_cat_lower == search_cat_lower:
-                    category_matched.append(ch)
-                    print(f"[API DEBUG]   MATCH: Challenge {ch.id} - DB: '{db_cat}' == Search: '{category_normalized}'", flush=True)
+                if db_cat.lower() == category_normalized.lower():
+                    category_matched_pool.append(ch)
+                    print(f"[API DEBUG]   MATCH [POOL]: Challenge {ch.id} - DB: '{db_cat}' == Search: '{category_normalized}'", flush=True)
         
-        print(f"[API DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' (all levels)", flush=True)
+        for ch in all_daily_challenges:
+            if ch.main_category:
+                db_cat = ch.main_category.strip()
+                if db_cat.lower() == category_normalized.lower():
+                    category_matched_daily.append(ch)
+                    print(f"[API DEBUG]   MATCH [DAILY]: Challenge {ch.id} - DB: '{db_cat}' == Search: '{category_normalized}'", flush=True)
+        
+        # Combine matched challenges (prefer pool, but include daily)
+        category_matched = category_matched_pool + category_matched_daily
+        
+        print(f"[API DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' ({len(category_matched_pool)} pool, {len(category_matched_daily)} daily)", flush=True)
         
         # When filtering by category, show challenges from user's level up to level+2
         all_challenges = [
             ch for ch in category_matched
             if ch.level <= level + 2  # Show challenges up to 2 levels ahead
         ]
-        print(f"[API DEBUG] After level filter (<= {level + 2}): {len(all_challenges)} challenges", flush=True)
+        
+        pool_after_level = len([ch for ch in all_challenges if ch.challenge_date is None])
+        daily_after_level = len([ch for ch in all_challenges if ch.challenge_date is not None])
+        print(f"[API DEBUG] After level filter (<= {level + 2}): {len(all_challenges)} challenges ({pool_after_level} pool, {daily_after_level} daily)", flush=True)
         
         # Debug: show what we found
         if all_challenges:
