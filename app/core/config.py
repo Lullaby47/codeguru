@@ -23,5 +23,5 @@ MAIN_ADMIN_USER_ID = 1
 # OpenAI API Key for mentor hints
 # IMPORTANT: Do NOT hardcode keys in code or commit them to git.
 # Set OPENAI_API_KEY in your environment (or hosting provider env vars).
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 

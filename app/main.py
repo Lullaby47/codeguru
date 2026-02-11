@@ -92,12 +92,12 @@ try:
 except Exception as e:
     print("[DB] Optional is_active migration:", repr(e), flush=True)
 
-# Log OpenAI key presence once at startup
+# Log OpenAI status once at startup (unified client)
 try:
-    from app.core.config import OPENAI_API_KEY as _oai_key
-    print(f"[AI HINT] OPENAI_API_KEY present: {bool(_oai_key and _oai_key.strip())}", flush=True)
-except Exception:
-    print("[AI HINT] OPENAI_API_KEY present: False", flush=True)
+    from app.ai.openai_client import log_startup as _ai_log_startup
+    _ai_log_startup()
+except Exception as _e:
+    print(f"[AI] startup log failed: {_e}", flush=True)
 
 # Include routers
 app.include_router(auth_router)

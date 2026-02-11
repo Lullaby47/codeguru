@@ -14,6 +14,7 @@ import traceback as _traceback
 import subprocess as _subprocess
 import tempfile as _tempfile
 import os as _os
+from app.ai.openai_client import get_client as _get_ai_client, key_present as _ai_key_present, set_last_error as _ai_set_error
 try:
     import openai
     OPENAI_AVAILABLE = True
@@ -92,7 +93,7 @@ def generate_mentor_hint_openai(code: str, description: str, expected_output: st
         logger.warning("[MENTOR HINT] OpenAI module not available")
         return None
     
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "":
+    if not _ai_key_present():
         debug_print("OpenAI API key not set")
         logger.warning("[MENTOR HINT] OpenAI API key not set")
         return None
@@ -100,7 +101,10 @@ def generate_mentor_hint_openai(code: str, description: str, expected_output: st
     try:
         debug_print("Calling OpenAI API...")
         logger.info("[MENTOR HINT] Calling OpenAI API...")
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        client = _get_ai_client()
+        if client is None:
+            debug_print("OpenAI client unavailable")
+            return None
         
         # Determine hint type
         if has_error:
@@ -349,9 +353,19 @@ Respond with ONLY the hint (1-2 sentences max), or return NOTHING if you cannot 
         return hint
         
     except Exception as e:
-        # Log error but don't break the app if OpenAI is down
+        # Catch AuthenticationError cleanly — no noisy stack traces
+        try:
+            if isinstance(e, openai.AuthenticationError):
+                msg = "[AI] auth error (401) - check OPENAI_API_KEY"
+                debug_print(msg)
+                logger.error(msg)
+                _ai_set_error(msg)
+                return None
+        except Exception:
+            pass
         debug_print(f"OpenAI call failed: {str(e)}")
-        logger.error(f"[MENTOR HINT] OpenAI call failed: {str(e)}", exc_info=True)
+        logger.error(f"[MENTOR HINT] OpenAI call failed: {str(e)}")
+        _ai_set_error(f"OpenAI call failed: {str(e)}")
         return None
 
 

@@ -1378,3 +1378,17 @@ def admin_delete_user(
     return RedirectResponse(
         url="/admin/users?success=User+deleted+successfully", status_code=303
     )
+
+
+# ======================================================
+# ADMIN: AI STATUS (diagnostics)
+# ======================================================
+@router.get("/admin/ai-status")
+def admin_ai_status(user: User = Depends(get_admin)):
+    """Return OpenAI configuration status for admin debugging."""
+    from app.ai.openai_client import key_present, key_fingerprint, get_last_error
+    return {
+        "key_present": key_present(),
+        "key_fingerprint": key_fingerprint(),
+        "last_error": get_last_error(),
+    }
