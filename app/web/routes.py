@@ -5,7 +5,7 @@ import requests
 import os
 
 from datetime import date
-from urllib.parse import unquote
+from urllib.parse import unquote, quote
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, or_
 
@@ -872,7 +872,7 @@ def force_learning_page(
     - With main_category: fetch next unsolved challenge in that category using per-category level.
     """
     act = or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None))
-    # Show all categories that have pool challenges (any level - per-category level used when fetching)
+    # Primary source: categories with pool challenges
     pool_categories = (
         db.query(Challenge.main_category)
         .filter(
@@ -884,7 +884,23 @@ def force_learning_page(
         .distinct()
         .all()
     )
-    main_categories = [r[0] for r in pool_categories if r[0] and r[0].strip()]
+    main_categories = [r[0].strip() for r in pool_categories if r[0] and r[0].strip()]
+
+    # Fallback source: if no pool categories, still show category options from all active challenges
+    # so "Choose category" always works and users can enter category challenge flow.
+    if not main_categories:
+        all_active_categories = (
+            db.query(Challenge.main_category)
+            .filter(
+                Challenge.main_category.isnot(None),
+                Challenge.main_category != "",
+                act,
+            )
+            .distinct()
+            .all()
+        )
+        main_categories = [r[0].strip() for r in all_active_categories if r[0] and r[0].strip()]
+        print(f"[WEB DEBUG] Force learning fallback categories (all active): {main_categories}", flush=True)
 
     # If user already chose a category, try to get next challenge in that category
     if main_category and main_category.strip():
@@ -905,8 +921,17 @@ def force_learning_page(
                         url=f"/challenge?challenge_id={challenge_id}",
                         status_code=303,
                     )
+                # If API has no direct challenge_id, fall back to category page flow
+                return RedirectResponse(
+                    url=f"/challenge?main_category={quote(main_category.strip())}",
+                    status_code=303,
+                )
         except Exception as exc:
             print(f"[WEB] /force-learning API error: {repr(exc)}", flush=True)
+            return RedirectResponse(
+                url=f"/challenge?main_category={quote(main_category.strip())}",
+                status_code=303,
+            )
         # No challenge in this category - show empty with option to pick another
         chosen_level = get_user_category_level(db, user.id, main_category.strip())
         return templates.TemplateResponse(
