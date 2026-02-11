@@ -450,43 +450,52 @@ def get_next_challenge(
 
     # Global pool: active pool challenges at this level only. Never exclude by other users' progress.
     # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
-    q = db.query(Challenge).filter(
-        Challenge.level == level,
-        Challenge.challenge_date.is_(None),  # Only pool challenges (Learn More / Force Learning)
-        or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
-    )
-    
+    # When filtering by category, also check next level to give users access to more challenges
     if main_category and main_category.strip():
-        # Normalize the category: strip whitespace and use case-insensitive comparison
+        # When category is selected, check both current level and next level
         category_normalized = main_category.strip()
-        print(f"[DEBUG] Searching for category: '{category_normalized}' at level {level}", flush=True)
+        print(f"[DEBUG] Searching for category: '{category_normalized}' at level {level} and {level + 1}", flush=True)
         
-        # First get all challenges at this level with main_category set
-        q_with_category = q.filter(
+        # Get challenges at current level AND next level for this category
+        q = db.query(Challenge).filter(
+            Challenge.level.in_([level, level + 1]),  # Check both current and next level
+            Challenge.challenge_date.is_(None),  # Only pool challenges
+            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
         )
-        all_challenges_before_filter = q_with_category.all()
+        all_challenges_before_filter = q.all()
         
         # Debug: print all categories found
         unique_categories = set()
         for ch in all_challenges_before_filter:
             if ch.main_category:
                 unique_categories.add(ch.main_category.strip())
-        print(f"[DEBUG] Available categories at level {level}: {sorted(unique_categories)}", flush=True)
+        print(f"[DEBUG] Available categories at level {level} and {level + 1}: {sorted(unique_categories)}", flush=True)
         
         # Filter in Python to handle exact case-insensitive match with trimmed values
         all_challenges = [
             ch for ch in all_challenges_before_filter
             if ch.main_category and ch.main_category.strip().lower() == category_normalized.lower()
         ]
-        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' (searching for: '{category_normalized.lower()}') out of {len(all_challenges_before_filter)} total at level {level}", flush=True)
+        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' (searching for: '{category_normalized.lower()}') out of {len(all_challenges_before_filter)} total at levels {level} and {level + 1}", flush=True)
         
-        # Debug: show what categories the matching challenges actually have
+        # Debug: show what categories and levels the matching challenges actually have
         if all_challenges:
-            actual_categories = [ch.main_category.strip() for ch in all_challenges[:3]]
-            print(f"[DEBUG] Sample matching challenge categories: {actual_categories}", flush=True)
+            actual_info = [(ch.main_category.strip(), ch.level) for ch in all_challenges[:5]]
+            print(f"[DEBUG] Sample matching challenges (category, level): {actual_info}", flush=True)
+        else:
+            print(f"[DEBUG] No challenges found! Checking if category name matches...", flush=True)
+            # Show what categories actually exist
+            for cat in sorted(unique_categories):
+                print(f"[DEBUG]   Available category: '{cat}' (lowercase: '{cat.lower()}')", flush=True)
     else:
+        # No category filter - only get challenges at current level
+        q = db.query(Challenge).filter(
+            Challenge.level == level,
+            Challenge.challenge_date.is_(None),  # Only pool challenges (Learn More / Force Learning)
+            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+        )
         all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
