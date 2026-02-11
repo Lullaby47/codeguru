@@ -466,12 +466,12 @@ def get_next_challenge(
     (used by "Learn More" to fetch challenges from the next level).
     """
     from sqlalchemy import distinct
-    from app.auth.category_level import get_user_category_level
+    from app.auth.category_level import get_user_category_level, sync_user_category_level
     
     # If category is provided, use per-category level; otherwise use provided level
     # BUT if force_next_level is set, trust the level from URL (force learning flow)
     if main_category and main_category.strip():
-        category_level = get_user_category_level(db, user.id, main_category.strip())
+        category_level = sync_user_category_level(db, user.id, main_category.strip())
         if force_next_level:
             print(f"[API DEBUG] Force next level: using passed level {level} (category level is {category_level}) for category '{main_category.strip()}'", flush=True)
         else:
@@ -1305,7 +1305,7 @@ def submit_challenge(
     # Level progression: follow the rule (solved_count >= current_level)
     # Only check if submission is correct
     # NOTE: Now uses per-category level instead of global level
-    from app.auth.category_level import get_user_category_level, increment_user_category_level
+    from app.auth.category_level import get_user_category_level, increment_user_category_level, sync_user_category_level
     
     level_up = False
     old_level = None
@@ -1317,24 +1317,25 @@ def submit_challenge(
         challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
         
         if challenge_category:
-            # Use per-category level
-            current_level = get_user_category_level(db, user.id, challenge_category)
+            # Use per-category level (sync first to fix stale levels)
+            current_level = sync_user_category_level(db, user.id, challenge_category)
             old_level = current_level
             
-            # Count distinct challenges solved correctly at user's current level IN THIS CATEGORY
+            # Count distinct challenges solved correctly at current level OR HIGHER in this category
+            # This allows Learn More (next-level) challenges to also contribute to level-up
             solved_count = (
                 db.query(func.count(distinct(Submission.challenge_id)))
                 .join(Challenge, Challenge.id == Submission.challenge_id)
                 .filter(
                     Submission.user_id == user.id,
                     Submission.is_correct == 1,
-                    Challenge.level == current_level,
+                    Challenge.level >= current_level,
                     Challenge.main_category == challenge_category,
                 )
                 .scalar()
             ) or 0
             
-            print(f"[API DEBUG] Category '{challenge_category}': solved {solved_count}/{current_level} challenges at level {current_level}", flush=True)
+            print(f"[API DEBUG] Category '{challenge_category}': solved {solved_count}/{current_level} challenges at level >= {current_level}", flush=True)
             
             # Check if user can level up: solved challenges >= current level
             if solved_count >= current_level:
@@ -1408,11 +1409,12 @@ def submit_force_challenge(
 
     # Allow access if challenge level is at user's level OR next level (for Learn More)
     # Use per-category level when challenge has main_category
-    from app.auth.category_level import get_user_category_level, increment_user_category_level
+    # Auto-sync level first to fix stale levels
+    from app.auth.category_level import get_user_category_level, increment_user_category_level, sync_user_category_level
     challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
     if challenge_category:
-        user_level_for_cat = get_user_category_level(db, user.id, challenge_category)
-        if challenge.level > user_level_for_cat + 1:
+        user_level_for_cat = sync_user_category_level(db, user.id, challenge_category)
+        if challenge.level > user_level_for_cat + 2:
             raise HTTPException(
                 status_code=403,
                 detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level for {challenge_category} is {user_level_for_cat}."
@@ -1471,12 +1473,19 @@ def submit_force_challenge(
         output_normalized = normalize_output_text(output)
         expected_normalized = normalize_output_text(challenge.expected_output or "")
 
+        print(f"[API DEBUG] submit-force output: {repr(output_normalized[:100])}", flush=True)
+        print(f"[API DEBUG] submit-force expected: {repr(expected_normalized[:100])}", flush=True)
+        print(f"[API DEBUG] submit-force match: {output_normalized == expected_normalized}", flush=True)
+
         if output_normalized == expected_normalized:
             is_correct = 1
 
     except Exception as e:
         output = f"Error: {str(e)}"
         is_correct = 0
+        print(f"[API DEBUG] submit-force exec error: {str(e)}", flush=True)
+
+    print(f"[API DEBUG] submit-force is_correct={is_correct} for challenge {challenge.id}", flush=True)
 
     # ------------------------------------
     # SAVE SUBMISSION (per-user progress only; never delete/disable the challenge)
@@ -1553,19 +1562,22 @@ def submit_force_challenge(
     old_level = None
     new_level = None
     if is_correct and challenge_category:
-        current_level = get_user_category_level(db, user.id, challenge_category)
+        current_level = sync_user_category_level(db, user.id, challenge_category)
         old_level = current_level
+        # Count distinct challenges solved correctly at current level OR HIGHER in this category
+        # This allows Learn More (next-level) challenges to also contribute to level-up
         solved_count = (
             db.query(func.count(distinct(Submission.challenge_id)))
             .join(Challenge, Challenge.id == Submission.challenge_id)
             .filter(
                 Submission.user_id == user.id,
                 Submission.is_correct == 1,
-                Challenge.level == current_level,
+                Challenge.level >= current_level,
                 Challenge.main_category == challenge_category,
             )
             .scalar()
         ) or 0
+        print(f"[API DEBUG] submit-force: {challenge_category} solved {solved_count}/{current_level} at level >= {current_level}", flush=True)
         if solved_count >= current_level:
             progress = increment_user_category_level(db, user.id, challenge_category)
             new_level = progress.level

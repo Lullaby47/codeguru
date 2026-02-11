@@ -275,16 +275,13 @@ def get_submission(
     if not submission.is_correct and not allow_incorrect:
         raise HTTPException(status_code=400, detail="Incorrect answer, try again.")
 
-    # Celebration happens ONLY if this submission caused level 2
-    show_celebration = False
-    if submission.is_first_submission:
-        if user.level == 2:
-            show_celebration = True
-            new_level = 2
-        else:
-            new_level = user.level
+    # Get the user's current per-category level for this challenge's category
+    from app.auth.category_level import get_user_category_level
+    challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
+    if challenge_category:
+        current_cat_level = get_user_category_level(db, user.id, challenge_category)
     else:
-        new_level = user.level
+        current_cat_level = user.level
 
     # Return details, but don't auto-route to progress page until correct submission
     return {
@@ -294,8 +291,7 @@ def get_submission(
         "attempt_number": attempt_number,
         "created_at": submission.created_at,
         "is_first_submission": bool(submission.is_first_submission),
-        "new_level": new_level,
-        "show_celebration": show_celebration,  # Send celebration flag to frontend
+        "current_level": current_cat_level,
         "challenge": {
             "id": challenge.id,
             "title": challenge.title,

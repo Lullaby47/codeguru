@@ -118,7 +118,8 @@ def sync_user_category_level(db: Session, user_id: int, main_category: str) -> i
     current_level = get_user_category_level(db, user_id, category_normalized)
     leveled_up = False
 
-    # Repeatedly check: if solved_count at current_level >= current_level, level up
+    # Repeatedly check: if solved_count at current_level or higher >= current_level, level up
+    # This ensures challenges solved via Learn More (next level) also count
     for _ in range(20):  # safety cap to prevent infinite loop
         solved_count = (
             db.query(func.count(distinct(Submission.challenge_id)))
@@ -126,7 +127,7 @@ def sync_user_category_level(db: Session, user_id: int, main_category: str) -> i
             .filter(
                 Submission.user_id == user_id,
                 Submission.is_correct == 1,
-                Challenge.level == current_level,
+                Challenge.level >= current_level,
                 Challenge.main_category == category_normalized,
             )
             .scalar()
@@ -137,12 +138,12 @@ def sync_user_category_level(db: Session, user_id: int, main_category: str) -> i
             old = current_level
             current_level = progress.level
             leveled_up = True
-            print(f"[SYNC] Auto level-up '{category_normalized}' for user {user_id}: {old} -> {current_level} (solved {solved_count} at level {old})", flush=True)
+            print(f"[SYNC] Auto level-up '{category_normalized}' for user {user_id}: {old} -> {current_level} (solved {solved_count} at level >= {old})", flush=True)
         else:
             break
 
     if not leveled_up:
-        print(f"[SYNC] No level change needed for '{category_normalized}' user {user_id}: level {current_level} (solved {solved_count}/{current_level})", flush=True)
+        print(f"[SYNC] No level change needed for '{category_normalized}' user {user_id}: level {current_level} (solved {solved_count}/{current_level} at level >= {current_level})", flush=True)
 
     return current_level
 

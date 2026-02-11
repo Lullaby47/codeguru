@@ -552,7 +552,25 @@ def submit_challenge_ui(
             data={"challenge_id": challenge_id, "code": code},
             cookies=request.cookies,
         )
+        print(f"[WEB DEBUG] submit-force response status: {r.status_code}", flush=True)
+        try:
+            resp_body = r.json()
+            print(f"[WEB DEBUG] submit-force response body keys: {list(resp_body.keys()) if isinstance(resp_body, dict) else 'not dict'}", flush=True)
+            if isinstance(resp_body, dict) and 'correct' in resp_body:
+                print(f"[WEB DEBUG] submit-force correct={resp_body.get('correct')}, submission_id={resp_body.get('submission_id')}", flush=True)
+        except Exception:
+            resp_body = None
+            print(f"[WEB DEBUG] submit-force response not JSON: {r.text[:200]}", flush=True)
+
         if r.status_code != 200:
+            print(f"[WEB DEBUG] submit-force FAILED with status {r.status_code}: {r.text[:300]}", flush=True)
+            # Try to parse the response — it might still have correct=true (edge case)
+            if resp_body and isinstance(resp_body, dict) and resp_body.get("correct"):
+                # API returned non-200 but answer is correct — treat as success
+                submission_id = resp_body.get("submission_id")
+                if submission_id:
+                    return RedirectResponse(url=f"/submission/{submission_id}/view", status_code=303)
+            
             challenge_r = requests.get(
                 f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
             )
@@ -567,6 +585,13 @@ def submit_challenge_ui(
                 .all()
                 if row[0] and str(row[0]).strip()
             ]
+            error_detail = ""
+            if resp_body and isinstance(resp_body, dict):
+                error_detail = resp_body.get("detail", "")
+            error_msg = error_detail if error_detail else (
+                "Error submitting challenge. Please try again." if not challenge 
+                else "Your answer is incorrect. Please try again!"
+            )
             return templates.TemplateResponse(
                 "challenge.html",
                 {
@@ -575,15 +600,14 @@ def submit_challenge_ui(
                     "today_completed": False,
                     "previous_code": code,
                     "edit_mode": True,
-                    "error_message": "Your answer is incorrect. Please try again!"
-                    if challenge else "Error submitting challenge.",
+                    "error_message": error_msg,
                     "user": user,
                     "main_categories": main_cats,
                     "selected_category": challenge.get("main_category") if challenge else None,
                 },
             )
 
-        result = r.json()
+        result = resp_body if resp_body else r.json()
         submission_id = result.get("submission_id")
         is_correct = result.get("correct", False)
         level_up = result.get("level_up", False)

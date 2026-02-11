@@ -2,9 +2,61 @@
 {% extends "journey_layout.html" %}
 {% block detail %}
 
-{% set show_celebration = submission.new_level is defined %}
+{% set show_celebration = level_up %}
 
 <style>
+/* Celebration overlay */
+.celebration {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: pointer;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.celebration.show {
+    display: flex;
+}
+
+.celebration-box {
+    background: #1a1a1a;
+    border: 2px solid #00ff66;
+    border-radius: 16px;
+    padding: 40px 50px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(0, 255, 102, 0.3), 0 0 80px rgba(0, 255, 102, 0.1);
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 400px;
+    width: 90%;
+}
+
+.celebration-box h1 {
+    font-size: 32px;
+    margin: 0 0 12px 0;
+    color: #fff;
+}
+
+.celebration-box p {
+    font-size: 16px;
+    color: #ccc;
+    margin: 0;
+    line-height: 1.5;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
 .progress-container {
     animation: fadeSlide .25s ease-out;
 }
@@ -247,8 +299,15 @@ ul li:before {
 {% if show_celebration %}
 <div class="celebration show" onclick="this.remove()">
     <div class="celebration-box">
-        <h1>🎉 Well Done</h1>
-        <p>You unlocked Level {{ submission.new_level }}</p>
+        <h1>🎉 Congratulations!</h1>
+        <p>You leveled up from Level {{ old_level }} to Level {{ new_level }}{% if submission.challenge.main_category %} in {{ submission.challenge.main_category }}{% endif %}!</p>
+    </div>
+</div>
+{% elif submission.is_correct %}
+<div class="celebration show" onclick="this.remove()">
+    <div class="celebration-box">
+        <h1>✅ Correct!</h1>
+        <p>Well done! Your answer is correct.</p>
     </div>
 </div>
 {% endif %}
