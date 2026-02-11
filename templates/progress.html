@@ -303,7 +303,7 @@ ul li:before {
         <p>You leveled up from Level {{ old_level }} to Level {{ new_level }}{% if submission.challenge.main_category %} in {{ submission.challenge.main_category }}{% endif %}!</p>
     </div>
 </div>
-{% elif submission.is_correct %}
+{% elif fresh and submission.is_correct %}
 <div class="celebration show" onclick="this.remove()">
     <div class="celebration-box">
         <h1>✅ Correct!</h1>

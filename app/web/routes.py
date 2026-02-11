@@ -512,7 +512,7 @@ def submit_challenge_ui(
                 # API returned non-200 but answer is correct — treat as success
                 submission_id = resp_body.get("submission_id")
                 if submission_id:
-                    return RedirectResponse(url=f"/submission/{submission_id}/view", status_code=303)
+                    return RedirectResponse(url=f"/submission/{submission_id}/view?fresh=true", status_code=303)
             
             challenge_r = requests.get(
                 f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
@@ -568,10 +568,10 @@ def submit_challenge_ui(
             # If user leveled up, add level up info to URL
             if level_up:
                 return RedirectResponse(
-                    url=f"/submission/{submission_id}/view?level_up=true&new_level={new_level}&old_level={old_level}",
+                    url=f"/submission/{submission_id}/view?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}",
                     status_code=303,
                 )
-            return RedirectResponse(url=f"/submission/{submission_id}/view", status_code=303)
+            return RedirectResponse(url=f"/submission/{submission_id}/view?fresh=true", status_code=303)
         else:
             challenge_r = requests.get(
                 f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
@@ -629,11 +629,11 @@ def submit_challenge_ui(
         if is_correct:  # If the answer is correct, go to progress page
             if level_up:
                 response = RedirectResponse(
-                    url=f"/progress/{submission_id}?level_up=true&new_level={new_level}&old_level={old_level}",
+                    url=f"/progress/{submission_id}?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}",
                     status_code=303,
                 )
                 return response
-            return RedirectResponse(url=f"/progress/{submission_id}", status_code=303)
+            return RedirectResponse(url=f"/progress/{submission_id}?fresh=true", status_code=303)
         else:
             challenge_r = requests.get(f"{_api_base(request)}/challenge/today", cookies=request.cookies)
             challenge = challenge_r.json() if challenge_r.status_code == 200 else None
@@ -736,7 +736,8 @@ def submission_progress(request: Request, submission_id: int, user: User = Depen
     if not submission.get("is_correct", False):
         return RedirectResponse(url="/dashboard", status_code=303)
 
-    level_up = request.query_params.get("level_up") == "true"
+    fresh = request.query_params.get("fresh") == "true"
+    level_up = fresh and request.query_params.get("level_up") == "true"
     new_level = request.query_params.get("new_level")
     old_level = request.query_params.get("old_level")
 
@@ -748,6 +749,7 @@ def submission_progress(request: Request, submission_id: int, user: User = Depen
             "level_up": level_up,
             "new_level": int(new_level) if new_level else None,
             "old_level": int(old_level) if old_level else None,
+            "fresh": fresh,
             "user": user,
         },
     )
@@ -763,7 +765,10 @@ def submission_view(request: Request, submission_id: int, user: User = Depends(g
 
     submission = r.json()
 
-    level_up = request.query_params.get("level_up") == "true"
+    # Only show celebration overlay on fresh redirect right after submission,
+    # NOT when revisiting from the journey page.
+    fresh = request.query_params.get("fresh") == "true"
+    level_up = fresh and request.query_params.get("level_up") == "true"
     new_level = request.query_params.get("new_level")
     old_level = request.query_params.get("old_level")
 
@@ -775,6 +780,7 @@ def submission_view(request: Request, submission_id: int, user: User = Depends(g
             "level_up": level_up,
             "new_level": int(new_level) if new_level else None,
             "old_level": int(old_level) if old_level else None,
+            "fresh": fresh,
             "user": user,
         },
     )
