@@ -305,52 +305,84 @@
             document.body.classList.remove("modal-open");
         }
         
-        // Handle logout link click/touch
+        // Handle logout link click/touch - Samsung Internet compatible
         function handleLogoutClick(e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             showLogoutModal();
+            return false;
         }
         
-        // Attach event listeners
-        logoutLink.addEventListener("click", handleLogoutClick);
+        // Attach event listeners - support both click and touchend for Samsung Internet
+        // Use capture phase to ensure we catch the event before navigation
+        logoutLink.addEventListener("click", handleLogoutClick, true);
         logoutLink.addEventListener("touchend", function(e) {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
             handleLogoutClick(e);
-        });
+            return false;
+        }, true);
         
-        // Yes button - proceed to logout
-        logoutBtnYes.addEventListener("click", function(e) {
+        // Also prevent default on touchstart to avoid navigation
+        logoutLink.addEventListener("touchstart", function(e) {
+            // Don't prevent default here, just mark that we're handling it
+            logoutLink.dataset.touchHandled = "true";
+        }, { passive: true });
+        
+        // Yes button - proceed to logout (Samsung Internet compatible)
+        function handleYesClick(e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             window.location.href = "/logout";
-        });
+            return false;
+        }
         
+        logoutBtnYes.addEventListener("click", handleYesClick, true);
         logoutBtnYes.addEventListener("touchend", function(e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             window.location.href = "/logout";
-        });
+            return false;
+        }, true);
         
-        // No button - close modal
-        logoutBtnNo.addEventListener("click", function(e) {
+        // No button - close modal (Samsung Internet compatible)
+        function handleNoClick(e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             hideLogoutModal();
-        });
+            return false;
+        }
         
+        logoutBtnNo.addEventListener("click", handleNoClick, true);
         logoutBtnNo.addEventListener("touchend", function(e) {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             hideLogoutModal();
-        });
+            return false;
+        }, true);
         
-        // Close on overlay click (outside modal)
+        // Close on overlay click (outside modal) - Samsung Internet compatible
         logoutModal.addEventListener("click", function(e) {
             if (e.target === logoutModal) {
+                e.preventDefault();
+                e.stopPropagation();
                 hideLogoutModal();
             }
-        });
+        }, true);
+        
+        logoutModal.addEventListener("touchend", function(e) {
+            if (e.target === logoutModal) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideLogoutModal();
+            }
+        }, true);
         
         // Close on Escape key
         document.addEventListener("keydown", function(e) {
