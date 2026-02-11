@@ -7,39 +7,24 @@
 <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <h3 style="color: #00ff66; font-size: 16px; margin: 0 0 16px 0; font-weight: 600;">📚 Select Category</h3>
     <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        {% set all_cat_bg = 'rgba(0, 255, 102, 0.15)' if not selected_category else 'rgba(136, 136, 136, 0.15)' %}
+        {% set all_cat_color = '#00ff66' if not selected_category else '#888' %}
+        {% set all_cat_border = 'rgba(0, 255, 102, 0.3)' if not selected_category else 'rgba(136, 136, 136, 0.3)' %}
         <a href="/challenge" 
-           style="
-               padding: 10px 20px;
-               background: {% if not selected_category %}rgba(0, 255, 102, 0.15){% else %}rgba(136, 136, 136, 0.15){% endif %};
-               color: {% if not selected_category %}#00ff66{% else %}#888{% endif %};
-               border: 1px solid {% if not selected_category %}rgba(0, 255, 102, 0.3){% else %}rgba(136, 136, 136, 0.3){% endif %};
-               border-radius: 8px;
-               text-decoration: none;
-               font-size: 14px;
-               font-weight: 500;
-               transition: all 0.2s ease;
-               display: inline-block;
-           "
+           style="padding: 10px 20px; background: {{ all_cat_bg }}; color: {{ all_cat_color }}; border: 1px solid {{ all_cat_border }}; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s ease; display: inline-block;"
            onmouseover="if (!this.classList.contains('active')) { this.style.background='rgba(136, 136, 136, 0.25)'; this.style.transform='translateY(-2px)'; }"
-           onmouseout="if (!this.classList.contains('active')) { this.style.background='rgba(136, 136, 136, 0.15)'; this.style.transform='none'; }">
+           onmouseout="if (!this.classList.contains('active')) { this.style.background='{{ all_cat_bg }}'; this.style.transform='none'; }">
             All Categories
         </a>
         {% for category in main_categories %}
+        {% set is_selected = selected_category == category %}
+        {% set cat_bg = 'rgba(0, 255, 102, 0.15)' if is_selected else 'rgba(136, 136, 136, 0.15)' %}
+        {% set cat_color = '#00ff66' if is_selected else '#888' %}
+        {% set cat_border = 'rgba(0, 255, 102, 0.3)' if is_selected else 'rgba(136, 136, 136, 0.3)' %}
         <a href="/challenge?main_category={{ category|urlencode }}" 
-           style="
-               padding: 10px 20px;
-               background: {% if selected_category == category %}rgba(0, 255, 102, 0.15){% else %}rgba(136, 136, 136, 0.15){% endif %};
-               color: {% if selected_category == category %}#00ff66{% else %}#888{% endif %};
-               border: 1px solid {% if selected_category == category %}rgba(0, 255, 102, 0.3){% else %}rgba(136, 136, 136, 0.3){% endif %};
-               border-radius: 8px;
-               text-decoration: none;
-               font-size: 14px;
-               font-weight: 500;
-               transition: all 0.2s ease;
-               display: inline-block;
-           "
+           style="padding: 10px 20px; background: {{ cat_bg }}; color: {{ cat_color }}; border: 1px solid {{ cat_border }}; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s ease; display: inline-block;"
            onmouseover="if (this.style.color !== 'rgb(0, 255, 102)') { this.style.background='rgba(136, 136, 136, 0.25)'; this.style.transform='translateY(-2px)'; }"
-           onmouseout="if (this.style.color !== 'rgb(0, 255, 102)') { this.style.background='{% if selected_category == category %}rgba(0, 255, 102, 0.15){% else %}rgba(136, 136, 136, 0.15){% endif %}'; this.style.transform='none'; }">
+           onmouseout="this.style.background='{{ cat_bg }}'; this.style.transform='none';">
             {{ category }}
         </a>
         {% endfor %}
