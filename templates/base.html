@@ -278,6 +278,10 @@
     }
 
     function showLogoutConfirmation() {
+        // Prevent body scroll when modal is open
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        
         const overlay = document.createElement("div");
         overlay.className = "logout-overlay";
         overlay.innerHTML = `
@@ -286,26 +290,34 @@
                 <p>Are you sure you want to log out?</p>
                 <div class="logout-modal-buttons">
                     <button class="logout-btn-yes" onclick="window.location.href='/logout'">Yes</button>
-                    <button class="logout-btn-no" onclick="this.closest('.logout-overlay').remove()">No</button>
+                    <button class="logout-btn-no" onclick="closeLogoutModal()">No</button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(overlay);
         
+        // Function to close modal and restore body scroll
+        window.closeLogoutModal = function() {
+            overlay.style.animation = "fadeOut 0.3s ease";
+            setTimeout(() => {
+                overlay.remove();
+                document.body.style.overflow = originalOverflow;
+                delete window.closeLogoutModal;
+            }, 300);
+        };
+        
         // Dismiss on click outside
         overlay.addEventListener("click", function(e) {
             if (e.target === overlay) {
-                overlay.style.animation = "fadeOut 0.3s ease";
-                setTimeout(() => overlay.remove(), 300);
+                window.closeLogoutModal();
             }
         });
 
         // Close on Escape key
         const handleEscape = function(e) {
             if (e.key === "Escape") {
-                overlay.style.animation = "fadeOut 0.3s ease";
-                setTimeout(() => overlay.remove(), 300);
+                window.closeLogoutModal();
                 document.removeEventListener("keydown", handleEscape);
             }
         };
