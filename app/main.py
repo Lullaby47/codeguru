@@ -8,6 +8,7 @@ from app.web.debug_routes import router as debug_router
 
 from app.db.base import Base, engine
 from app.auth.models import User
+from app.auth.category_progress import UserCategoryProgress  # Import for Alembic
 
 from app.auth.routes import router as auth_router
 from app.web.routes import router as web_router
