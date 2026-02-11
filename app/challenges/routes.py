@@ -8,6 +8,12 @@ import random
 import ast
 import re
 import logging
+import uuid as _uuid
+import time as _time
+import traceback as _traceback
+import subprocess as _subprocess
+import tempfile as _tempfile
+import os as _os
 try:
     import openai
     OPENAI_AVAILABLE = True
@@ -977,30 +983,168 @@ def get_today_challenge(
 # ======================================================
 # TEST CODE EXECUTION (FOR TERMINAL OUTPUT)
 # ======================================================
+# Safety constants for test-code execution
+_TEST_CODE_MAX_LENGTH = 10_000       # max characters of user code
+_TEST_CODE_TIMEOUT_SECONDS = 5       # subprocess execution timeout
+_TEST_CODE_MAX_OUTPUT_LENGTH = 5_000  # max chars returned in output
+
+
+def _run_code_in_subprocess(code: str, timeout: int) -> tuple[str, str | None]:
+    """
+    Run user code in an isolated subprocess with a timeout.
+    Returns (stdout_output, error_string_or_None).
+    Uses a per-request temp file (uuid-based) and cleans up in finally.
+    """
+    tmp_path = None
+    try:
+        # Create a unique temp file for this request
+        fd, tmp_path = _tempfile.mkstemp(suffix=".py", prefix="codeguru_test_")
+        with _os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(code)
+
+        result = _subprocess.run(
+            ["python", tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=_tempfile.gettempdir(),  # don't run in app directory
+        )
+
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+
+        if result.returncode != 0:
+            # Code raised an exception or had a syntax error
+            # Parse the stderr to give a clean error message
+            error_msg = stderr
+            # Try to extract just the last line (the actual exception)
+            if stderr:
+                lines = stderr.strip().split("\n")
+                # Find the last meaningful error line
+                for line in reversed(lines):
+                    line_stripped = line.strip()
+                    if line_stripped and not line_stripped.startswith("Traceback") and not line_stripped.startswith("File "):
+                        error_msg = line_stripped
+                        break
+            return stdout, error_msg or f"Process exited with code {result.returncode}"
+        
+        return stdout, None
+
+    except _subprocess.TimeoutExpired:
+        return "", f"Execution timed out after {timeout} seconds"
+    except FileNotFoundError:
+        # python binary not found – signal caller to use fallback
+        return "", "Execution error: No such file or directory (python binary not found)"
+    except Exception as e:
+        return "", f"Execution error: {str(e)}"
+    finally:
+        # Always clean up the temp file
+        if tmp_path:
+            try:
+                _os.unlink(tmp_path)
+            except OSError:
+                pass
+
+
+def _run_code_in_process(code: str) -> tuple[str, str | None]:
+    """
+    Fallback: run code in-process using exec() with stdout capture.
+    Used only if subprocess execution is unavailable (e.g. no python binary).
+    """
+    buffer = io.StringIO()
+    stderr_buffer = io.StringIO()
+    try:
+        import sys
+        old_stderr = sys.stderr
+        sys.stderr = stderr_buffer
+        try:
+            with contextlib.redirect_stdout(buffer):
+                exec(code, {"__builtins__": __builtins__})
+        finally:
+            sys.stderr = old_stderr
+        return buffer.getvalue().strip(), None
+    except SyntaxError as e:
+        return buffer.getvalue().strip(), f"SyntaxError: {e}"
+    except Exception as e:
+        return buffer.getvalue().strip(), f"{type(e).__name__}: {e}"
+
+
 @router.post("/test-code")
 def test_code(
-    code: str = Form(...),
+    code: str = Form(""),
     user: User = Depends(get_current_user),
 ):
-    """Execute code and return output without saving submission."""
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    output = ""
-    error = None
+    """
+    Execute user code and return output for the live terminal preview.
+    - Runs in an isolated subprocess with a timeout.
+    - Falls back to in-process exec if subprocess is unavailable.
+    - Never crashes the server; all errors are caught and returned as JSON.
+    """
+    request_id = str(_uuid.uuid4())[:8]
+    start_time = _time.time()
+    user_id = user.id if user else "anon"
+    execution_method = "none"
 
     try:
-        buffer = io.StringIO()
-        with contextlib.redirect_stdout(buffer):
-            exec(code, {})
-        output = buffer.getvalue().strip()
-    except Exception as e:
-        error = str(e)
+        # ── Auth check ──────────────────────────────────────
+        if not user:
+            return {"ok": False, "output": "", "error": "Not authenticated", "details": "Login required"}
 
-    return {
-        "output": output,
-        "error": error
-    }
+        # ── Validate input ──────────────────────────────────
+        if not code or not code.strip():
+            return {"ok": True, "output": "", "error": None}
+
+        code = code.strip()
+
+        if len(code) > _TEST_CODE_MAX_LENGTH:
+            return {
+                "ok": False,
+                "output": "",
+                "error": f"Code too long ({len(code)} chars). Maximum is {_TEST_CODE_MAX_LENGTH} characters.",
+                "details": "Reduce your code length and try again.",
+            }
+
+        print(f"[TEST-CODE {request_id}] user={user_id} code_len={len(code)}", flush=True)
+
+        # ── Try subprocess execution first (isolated) ───────
+        execution_method = "subprocess"
+        output, error = _run_code_in_subprocess(code, _TEST_CODE_TIMEOUT_SECONDS)
+
+        # If subprocess returned a fallback signal (FileNotFoundError for python binary),
+        # fall back to in-process execution
+        if error is not None and "Execution error:" in error and "No such file" in error:
+            execution_method = "in-process-fallback"
+            print(f"[TEST-CODE {request_id}] subprocess unavailable, falling back to in-process exec", flush=True)
+            output, error = _run_code_in_process(code)
+
+        # Truncate output if too long
+        if output and len(output) > _TEST_CODE_MAX_OUTPUT_LENGTH:
+            output = output[:_TEST_CODE_MAX_OUTPUT_LENGTH] + "\n... (output truncated)"
+
+        elapsed = _time.time() - start_time
+        print(
+            f"[TEST-CODE {request_id}] done method={execution_method} "
+            f"elapsed={elapsed:.3f}s output_len={len(output)} error={'yes' if error else 'no'}",
+            flush=True,
+        )
+
+        return {"ok": True, "output": output, "error": error}
+
+    except Exception as exc:
+        # ── CATCH-ALL: this endpoint must NEVER crash the server ──
+        elapsed = _time.time() - start_time
+        tb = _traceback.format_exc()
+        print(
+            f"[TEST-CODE ERROR {request_id}] user={user_id} method={execution_method} "
+            f"elapsed={elapsed:.3f}s\n{tb}",
+            flush=True,
+        )
+        return {
+            "ok": False,
+            "output": "",
+            "error": f"Internal error: {type(exc).__name__}: {str(exc)}",
+            "details": "The server encountered an unexpected error running your code. Please try again.",
+        }
 
 # ======================================================
 # SEARCH CHALLENGES  ✅ MOVED ABOVE /{challenge_id} (ONLY CHANGE)

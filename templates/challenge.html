@@ -298,10 +298,19 @@ function runCode() {
             credentials: 'include',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok && response.status !== 200) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.error) {
-                terminalOutput.textContent = `Error: ${data.error}`;
+                // Show error in red, but also show any partial output
+                const parts = [];
+                if (data.output) parts.push(data.output);
+                parts.push(`Error: ${data.error}`);
+                terminalOutput.textContent = parts.join("\n");
                 terminalOutput.style.color = "#ff4444";
             } else {
                 terminalOutput.textContent = data.output || "(No output)";
@@ -309,7 +318,7 @@ function runCode() {
             }
         })
         .catch(error => {
-            terminalOutput.textContent = `Error: ${error.message}`;
+            terminalOutput.textContent = `Connection error: ${error.message}`;
             terminalOutput.style.color = "#ff4444";
         });
     }, 500);
