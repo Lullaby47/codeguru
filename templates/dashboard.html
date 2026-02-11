@@ -27,7 +27,10 @@
                     <div class="dashboard-levels-container">
                         {% if category_levels and category_levels|length > 0 %}
                             {% for item in category_levels[:3] %}
-                            <div class="dashboard-level-item">({{ item.main_category }}) - (Level {{ item.level }})</div>
+                            <div class="dashboard-level-item">
+                                <span class="dashboard-level-category">{{ item.main_category }}</span>
+                                <span class="dashboard-level-value">Level {{ item.level }}</span>
+                            </div>
                             {% endfor %}
                             {% if category_levels|length > 3 %}
                             <div class="dashboard-level-viewall"><a href="/challenge">View all</a></div>
