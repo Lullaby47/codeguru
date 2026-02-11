@@ -126,18 +126,6 @@
     {% block content %}{% endblock %}
 </div>
 
-<!-- Logout Confirmation Modal (static, always present but hidden) -->
-<div id="logoutModal" class="logout-overlay" aria-hidden="true">
-    <div class="logout-modal" role="dialog" aria-labelledby="logoutModalTitle" aria-modal="true">
-        <h2 id="logoutModalTitle">Log Out</h2>
-        <p>Are you sure you want to log out?</p>
-        <div class="logout-modal-buttons">
-            <button type="button" class="logout-btn-yes" id="logoutBtnYes">Yes</button>
-            <button type="button" class="logout-btn-no" id="logoutBtnNo">No</button>
-        </div>
-    </div>
-</div>
-
 <script>
     const quotes = [
         "Small progress is still progress.",
@@ -273,26 +261,45 @@
     // Logout Confirmation Modal
     // Use static modal in HTML, show/hide with class
     (function() {
-        const logoutLink = document.querySelector(".logout-link");
-        const logoutModal = document.getElementById("logoutModal");
-        const logoutBtnYes = document.getElementById("logoutBtnYes");
-        const logoutBtnNo = document.getElementById("logoutBtnNo");
-        
-        if (!logoutLink || !logoutModal || !logoutBtnYes || !logoutBtnNo) {
-            return; // Elements not found, exit gracefully
+        // Wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLogoutModal);
+        } else {
+            initLogoutModal();
         }
+        
+        function initLogoutModal() {
+            const logoutLink = document.querySelector(".logout-link");
+            const logoutModal = document.getElementById("logoutModal");
+            const logoutBtnYes = document.getElementById("logoutBtnYes");
+            const logoutBtnNo = document.getElementById("logoutBtnNo");
+            
+            if (!logoutLink || !logoutModal || !logoutBtnYes || !logoutBtnNo) {
+                console.warn('Logout modal elements not found');
+                return; // Elements not found, exit gracefully
+            }
         
         // Function to show modal
         function showLogoutModal() {
+            console.log('Showing logout modal');
             logoutModal.classList.add("is-open");
             logoutModal.setAttribute("aria-hidden", "false");
             document.body.classList.add("modal-open");
+            // Force reflow to ensure styles apply
+            void logoutModal.offsetWidth;
             // Focus the first button for accessibility
-            setTimeout(() => logoutBtnNo.focus(), 100);
+            setTimeout(() => {
+                try {
+                    logoutBtnNo.focus();
+                } catch(e) {
+                    // Focus might fail on some mobile browsers, ignore
+                }
+            }, 100);
         }
         
         // Function to hide modal
         function hideLogoutModal() {
+            console.log('Hiding logout modal');
             logoutModal.classList.remove("is-open");
             logoutModal.setAttribute("aria-hidden", "true");
             document.body.classList.remove("modal-open");
@@ -351,8 +358,21 @@
                 hideLogoutModal();
             }
         });
+        }
     })();
 </script>
+
+<!-- Logout Confirmation Modal (static, always present but hidden - placed at end of body for z-index stacking) -->
+<div id="logoutModal" class="logout-overlay" aria-hidden="true">
+    <div class="logout-modal" role="dialog" aria-labelledby="logoutModalTitle" aria-modal="true">
+        <h2 id="logoutModalTitle">Log Out</h2>
+        <p>Are you sure you want to log out?</p>
+        <div class="logout-modal-buttons">
+            <button type="button" class="logout-btn-yes" id="logoutBtnYes">Yes</button>
+            <button type="button" class="logout-btn-no" id="logoutBtnNo">No</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

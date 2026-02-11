@@ -1075,8 +1075,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
    MODALS (Profile, Congrats)
    ============================================ */
 .profile-overlay,
-.congrats-overlay,
-.logout-overlay {
+.congrats-overlay {
     position: fixed;
     inset: 0;
     width: 100%;
@@ -1098,8 +1097,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 .profile-overlay:not([aria-hidden="true"]),
-.congrats-overlay:not([aria-hidden="true"]),
-.logout-overlay.is-open {
+.congrats-overlay:not([aria-hidden="true"]) {
     opacity: 1;
     visibility: visible;
 }
@@ -1179,18 +1177,40 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     margin-top: 20px;
 }
 
-/* Logout Confirmation Modal */
+/* Logout Confirmation Modal - Separate from other modals for mobile reliability */
 .logout-overlay {
     /* Default hidden state - works even if JS loads late */
-    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(8px);
+    display: none !important;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999 !important; /* Higher than nav (1000) and other modals (10000) */
+    cursor: pointer;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     opacity: 0;
     visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    /* Ensure it's not clipped by any parent */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .logout-overlay.is-open {
-    display: flex;
-    opacity: 1;
-    visibility: visible;
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 .logout-modal {
@@ -1286,17 +1306,25 @@ body.modal-open {
 
 @media (max-width: 719px) {
     .logout-overlay {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100vh;
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
         min-height: -webkit-fill-available; /* iOS Safari fix */
+        min-height: 100vh; /* Fallback */
         padding: 16px;
-        display: none; /* Default hidden */
+        display: none !important; /* Default hidden */
+        z-index: 99999 !important;
     }
 
     .logout-overlay.is-open {
-        display: flex;
+        display: flex !important;
+        opacity: 1 !important;
+        visibility: visible !important;
     }
 
     .logout-modal {
