@@ -499,16 +499,31 @@ def get_next_challenge(
         all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
-    solved_challenge_ids = (
-        db.query(distinct(Submission.challenge_id))
-        .join(Challenge, Challenge.id == Submission.challenge_id)
-        .filter(
-            Submission.user_id == user.id,
-            Submission.is_correct == 1,
-            Challenge.level == level,
+    # If filtering by category, check solved challenges at both current and next level
+    if main_category and main_category.strip():
+        # Check solved challenges at both levels since we're showing challenges from both
+        solved_challenge_ids = (
+            db.query(distinct(Submission.challenge_id))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level.in_([level, level + 1]),  # Check both levels
+            )
+            .all()
         )
-        .all()
-    )
+    else:
+        # Only check solved challenges at current level
+        solved_challenge_ids = (
+            db.query(distinct(Submission.challenge_id))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level == level,
+            )
+            .all()
+        )
     solved_ids = {row[0] for row in solved_challenge_ids}
 
     # Filter to unsolved for this user only
