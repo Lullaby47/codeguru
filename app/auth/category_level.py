@@ -90,6 +90,63 @@ def increment_user_category_level(db: Session, user_id: int, main_category: str)
     return set_user_category_level(db, user_id, main_category, current_level + 1)
 
 
+def sync_user_category_level(db: Session, user_id: int, main_category: str) -> int:
+    """
+    Auto-sync user's category level based on how many challenges they've actually solved.
+    If the user has solved enough challenges at their current level to level up, 
+    this function will increment their level (possibly multiple times).
+    
+    This fixes cases where challenges were solved before the per-category level system
+    was introduced, or where the level-up didn't trigger properly.
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        main_category: Category name
+    
+    Returns:
+        The (possibly updated) level for this category
+    """
+    from sqlalchemy import func, distinct
+    from app.challenges.models import Challenge
+    from app.submissions.models import Submission
+
+    if not main_category or not main_category.strip():
+        return 1
+
+    category_normalized = main_category.strip()
+    current_level = get_user_category_level(db, user_id, category_normalized)
+    leveled_up = False
+
+    # Repeatedly check: if solved_count at current_level >= current_level, level up
+    for _ in range(20):  # safety cap to prevent infinite loop
+        solved_count = (
+            db.query(func.count(distinct(Submission.challenge_id)))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user_id,
+                Submission.is_correct == 1,
+                Challenge.level == current_level,
+                Challenge.main_category == category_normalized,
+            )
+            .scalar()
+        ) or 0
+
+        if solved_count >= current_level:
+            progress = increment_user_category_level(db, user_id, category_normalized)
+            old = current_level
+            current_level = progress.level
+            leveled_up = True
+            print(f"[SYNC] Auto level-up '{category_normalized}' for user {user_id}: {old} -> {current_level} (solved {solved_count} at level {old})", flush=True)
+        else:
+            break
+
+    if not leveled_up:
+        print(f"[SYNC] No level change needed for '{category_normalized}' user {user_id}: level {current_level} (solved {solved_count}/{current_level})", flush=True)
+
+    return current_level
+
+
 def get_all_user_category_levels(db: Session, user_id: int) -> dict[str, int]:
     """
     Get all category levels for a user.

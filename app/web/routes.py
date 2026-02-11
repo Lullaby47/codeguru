@@ -449,10 +449,12 @@ def daily_challenge(
             challenge_already_solved = solved is not None
 
             # Calculate progress for current level - use per-category level when category selected
+            # Auto-sync level first to fix stale levels
             challenge_category = challenge.get("main_category") if challenge else None
             if challenge_category and challenge_category.strip():
-                current_level = get_user_category_level(db, user.id, challenge_category)
-                print(f"[WEB DEBUG] Progress info using category '{challenge_category}' level: {current_level}", flush=True)
+                from app.auth.category_level import sync_user_category_level
+                current_level = sync_user_category_level(db, user.id, challenge_category)
+                print(f"[WEB DEBUG] Progress info using category '{challenge_category}' synced level: {current_level}", flush=True)
                 solved_count = (
                     db.query(func.count(distinct(Submission.challenge_id)))
                     .join(Challenge, Challenge.id == Submission.challenge_id)
@@ -905,9 +907,11 @@ def force_learning_page(
 
     # If user already chose a category, try to get next challenge in that category
     if main_category and main_category.strip():
-        category_level = get_user_category_level(db, user.id, main_category.strip())
+        # Auto-sync level first (fixes cases where level wasn't incremented properly)
+        from app.auth.category_level import sync_user_category_level
+        category_level = sync_user_category_level(db, user.id, main_category.strip())
         next_level = category_level + 1  # Force learning gives NEXT level challenges
-        print(f"[WEB DEBUG] Force learning: category '{main_category.strip()}' current level {category_level}, fetching level {next_level}", flush=True)
+        print(f"[WEB DEBUG] Force learning: category '{main_category.strip()}' synced level {category_level}, fetching level {next_level}", flush=True)
         try:
             r = requests.get(
                 f"{_api_base(request)}/challenge/next/{next_level}",
@@ -918,10 +922,26 @@ def force_learning_page(
             if r.status_code == 200:
                 result = r.json()
                 challenge_id = result.get("challenge_id")
-                if challenge_id:
+                all_solved = result.get("all_solved", False)
+                if challenge_id and not all_solved:
+                    # Found an unsolved next-level challenge
                     return RedirectResponse(
                         url=f"/challenge?challenge_id={challenge_id}",
                         status_code=303,
+                    )
+                if all_solved:
+                    # All challenges in this category are solved — show completion message
+                    print(f"[WEB DEBUG] Force learning: all challenges solved in '{main_category.strip()}' up to level {next_level}", flush=True)
+                    return templates.TemplateResponse(
+                        "force_learning_empty.html",
+                        {
+                            "request": request,
+                            "user": user,
+                            "main_categories": main_categories,
+                            "chosen_category": main_category.strip(),
+                            "chosen_category_level": category_level,
+                            "all_solved": True,
+                        },
                     )
                 # If API has no direct challenge_id, fall back to category page flow
                 return RedirectResponse(

@@ -683,7 +683,7 @@ def get_next_challenge(
                 flush=True,
             )
             print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (CATEGORY FALLBACK) =====", flush=True)
-            return {"challenge_id": fallback_challenge.id}
+            return {"challenge_id": fallback_challenge.id, "all_solved": True}
         if "category_matched" in locals() and category_matched:
             fallback_challenge = random.choice(category_matched)
             print(
@@ -691,7 +691,7 @@ def get_next_challenge(
                 flush=True,
             )
             print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (CATEGORY OUT-OF-RANGE FALLBACK) =====", flush=True)
-            return {"challenge_id": fallback_challenge.id}
+            return {"challenge_id": fallback_challenge.id, "all_solved": True}
     
     print(f"[API DEBUG] ❌ No unsolved challenges available", flush=True)
     print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (NO CHALLENGES) =====", flush=True)
