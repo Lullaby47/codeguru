@@ -1115,18 +1115,18 @@ def submit_challenge(
     db.refresh(submission)
 
     # ------------------------------------
-    # 🧠 CREATE EMPTY INSIGHT (KEY STEP)
+    # 🧠 CREATE EMPTY INSIGHT (IDEMPOTENT)
     # ------------------------------------
-    insight = SubmissionInsight(
-        submission_id=submission.id,
-        concepts="",
-        learning_points="",
-        real_world_use="",
-        improvement_hint="",
-    )
-
-    db.add(insight)
-    db.commit()
+    _existing_insight = db.query(SubmissionInsight).filter_by(submission_id=submission.id).one_or_none()
+    if _existing_insight:
+        print(f"[INSIGHT] submission_id={submission.id} already exists — skipped", flush=True)
+    else:
+        db.add(SubmissionInsight(
+            submission_id=submission.id, concepts="",
+            learning_points="", real_world_use="", improvement_hint="",
+        ))
+        db.commit()
+        print(f"[INSIGHT] submission_id={submission.id} inserted", flush=True)
 
     # ------------------------------------
     # 🎯 MENTOR HINT (on attempts 3, 5, 7, 8, 10, or ≥ 11)
@@ -1310,18 +1310,18 @@ def submit_force_challenge(
     db.refresh(submission)
 
     # ------------------------------------
-    # 🧠 CREATE EMPTY INSIGHT (KEY STEP)
+    # 🧠 CREATE EMPTY INSIGHT (IDEMPOTENT)
     # ------------------------------------
-    insight = SubmissionInsight(
-        submission_id=submission.id,
-        concepts="",
-        learning_points="",
-        real_world_use="",
-        improvement_hint="",
-    )
-
-    db.add(insight)
-    db.commit()
+    _existing_insight = db.query(SubmissionInsight).filter_by(submission_id=submission.id).one_or_none()
+    if _existing_insight:
+        print(f"[INSIGHT] submission_id={submission.id} already exists — skipped", flush=True)
+    else:
+        db.add(SubmissionInsight(
+            submission_id=submission.id, concepts="",
+            learning_points="", real_world_use="", improvement_hint="",
+        ))
+        db.commit()
+        print(f"[INSIGHT] submission_id={submission.id} inserted", flush=True)
 
     # ------------------------------------
     # 🎯 MENTOR HINT (on attempts 3, 5, 7, 8, 10, or ≥ 11)
