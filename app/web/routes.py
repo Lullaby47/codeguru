@@ -363,7 +363,6 @@ def daily_challenge(
         print(f"[WEB DEBUG] Normalized category length: {len(category_normalized)}", flush=True)
         
         # Check what categories actually exist in DB for this user's level range
-        # Note: distinct and or_ are already imported at top of file
         db_categories_check = (
             db.query(Challenge.main_category, Challenge.level, func.count(Challenge.id).label('count'))
             .filter(
@@ -642,7 +641,7 @@ def submit_challenge_ui(
             previous_code = code
 
             # Get categories for the template
-            from sqlalchemy import distinct, or_
+            # Note: distinct and or_ are already imported at top of file
             main_categories = (
                 db.query(distinct(Challenge.main_category))
                 .filter(
