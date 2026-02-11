@@ -1148,11 +1148,12 @@ def admin_reset_user_confirm(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_main_admin),
+    user: User = Depends(get_admin),
 ):
     """
     Show reset progress confirmation page for a user.
     User must click "Yes" to actually reset.
+    Available to admin and co-admin.
     """
     target = db.query(User).filter(User.id == user_id).first()
     
@@ -1180,7 +1181,7 @@ def admin_reset_user_confirm(
 def admin_reset_user(
     user_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_main_admin),
+    user: User = Depends(get_admin),
 ):
     """Reset a user's progress (level, submissions, streak); main admin only."""
     target = db.query(User).filter(User.id == user_id).first()
