@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Date
+from sqlalchemy import Column, Integer, String, Text, Date, Boolean, true
 from app.db.base import Base
 
 
@@ -6,6 +6,9 @@ class Challenge(Base):
     __tablename__ = "challenges"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # Global pool: only show challenges with is_active=True. Never remove/disable when a user solves.
+    is_active = Column(Boolean, nullable=False, default=True, server_default=true())
 
     level = Column(Integer, nullable=False)
     title = Column(String(255), nullable=False)
