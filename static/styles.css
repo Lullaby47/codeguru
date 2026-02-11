@@ -1292,20 +1292,38 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     grid-column: 1 / -1;
 }
 .profile-levels-container {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     max-height: 140px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
 }
 .profile-level-item {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    box-sizing: border-box;
     font-size: 13px;
     color: var(--green);
-    padding: 6px 10px;
+    padding: 8px 12px;
     background: rgba(0, 255, 102, 0.08);
     border-radius: 8px;
     border: 1px solid rgba(0, 255, 102, 0.2);
+}
+.profile-level-category {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: left;
+}
+.profile-level-value {
+    white-space: nowrap;
+    text-align: right;
+    color: #9dffbd;
 }
 .profile-level-empty,
 .profile-levels-loading {
@@ -1315,8 +1333,8 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     grid-column: 1 / -1;
 }
 @media (max-width: 600px) {
-    .profile-levels-container {
-        grid-template-columns: 1fr;
+    .profile-level-item {
+        align-items: flex-start;
     }
 }
 

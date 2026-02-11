@@ -223,7 +223,10 @@
                     container.innerHTML = '<div class="profile-level-empty">No categories yet</div>';
                 } else {
                     container.innerHTML = levels.map(item =>
-                        `<div class="profile-level-item">(${item.main_category}) - (Level ${item.level})</div>`
+                        `<div class="profile-level-item">
+                            <span class="profile-level-category">${item.main_category}</span>
+                            <span class="profile-level-value">Level ${item.level}</span>
+                        </div>`
                     ).join("");
                 }
             })
