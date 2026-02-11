@@ -1061,9 +1061,9 @@ def admin_delete_challenge_confirm(
 def admin_users_page(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_main_admin),
+    user: User = Depends(get_admin),
 ):
-    """Main admin-only user management page."""
+    """Admin and co-admin user management page."""
     users = db.query(User).order_by(User.id.asc()).all()
 
     users_data = [
