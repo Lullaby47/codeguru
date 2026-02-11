@@ -64,6 +64,120 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     padding: 20px;
 }
 
+/* ============================================
+   LOGOUT CONFIRMATION PAGE
+   ============================================ */
+.logout-confirm-container {
+    min-height: calc(100vh - 110px); /* Account for nav height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.logout-confirm-card {
+    width: 100%;
+    max-width: 400px;
+    background: linear-gradient(135deg, #252526 0%, #2d2d30 100%);
+    border: 2px solid #ff4444;
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(255, 68, 68, 0.3);
+    box-sizing: border-box;
+}
+
+.logout-confirm-title {
+    font-size: 24px;
+    margin: 0 0 16px 0;
+    color: #ff4444;
+    font-weight: 600;
+}
+
+.logout-confirm-message {
+    font-size: 16px;
+    color: #ccc;
+    margin: 0 0 32px 0;
+    line-height: 1.5;
+}
+
+.logout-confirm-form {
+    margin: 0;
+    padding: 0;
+}
+
+.logout-confirm-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.logout-confirm-btn-yes,
+.logout-confirm-btn-no {
+    width: 100%;
+    padding: 14px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-height: 44px; /* Touch-friendly minimum height */
+    touch-action: manipulation; /* Prevent double-tap zoom on mobile */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.logout-confirm-btn-yes {
+    background: #ff4444;
+    color: #fff;
+    border: 1px solid #ff4444;
+}
+
+.logout-confirm-btn-yes:hover,
+.logout-confirm-btn-yes:active {
+    background: #ff5555;
+    border-color: #ff5555;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+}
+
+.logout-confirm-btn-no {
+    background: rgba(136, 136, 136, 0.2);
+    color: #ccc;
+    border: 1px solid rgba(136, 136, 136, 0.4);
+}
+
+.logout-confirm-btn-no:hover,
+.logout-confirm-btn-no:active {
+    background: rgba(136, 136, 136, 0.3);
+    border-color: rgba(136, 136, 136, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(136, 136, 136, 0.2);
+    color: #fff;
+}
+
+/* Desktop: side-by-side buttons */
+@media (min-width: 720px) {
+    .logout-confirm-buttons {
+        flex-direction: row;
+        gap: 12px;
+    }
+
+    .logout-confirm-btn-yes,
+    .logout-confirm-btn-no {
+        width: auto;
+        flex: 1;
+        min-width: 120px;
+    }
+}
+
 .auth-card {
     width: 100%;
     max-width: 400px;

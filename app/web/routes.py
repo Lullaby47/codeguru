@@ -641,12 +641,47 @@ def submission_view(request: Request, submission_id: int, user: User = Depends(g
 
 
 # ======================================================
-# LOGOUT
+# LOGOUT - CONFIRMATION PAGE
 # ======================================================
-@router.get("/logout")
-def logout():
+@router.get("/logout", response_class=HTMLResponse)
+def logout_confirm(
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    """
+    Show logout confirmation page.
+    User must click "Yes" to actually log out.
+    """
+    return templates.TemplateResponse(
+        "logout_confirm.html",
+        {
+            "request": request,
+            "user": user,
+        },
+    )
+
+
+# ======================================================
+# LOGOUT - PERFORM LOGOUT
+# ======================================================
+@router.post("/logout")
+def logout_perform(request: Request):
+    """
+    Perform the actual logout by deleting the access token cookie.
+    """
+    # Cookie security: must match the same settings used when setting the cookie
+    secure_cookie = os.getenv("ENVIRONMENT", "").lower() == "production"
+    
     response = RedirectResponse(url="/login", status_code=303)
-    response.delete_cookie("access_token")
+    
+    # Delete the cookie with the same settings used when setting it
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=secure_cookie,
+        samesite="lax",
+    )
+    
     return response
 
 

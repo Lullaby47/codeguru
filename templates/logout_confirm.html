@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Log Out — CodeGuru{% endblock %}
+
+{% block content %}
+<div class="logout-confirm-container">
+    <div class="logout-confirm-card">
+        <h1 class="logout-confirm-title">Log Out</h1>
+        <p class="logout-confirm-message">Are you sure you want to log out?</p>
+        
+        <form method="POST" action="/logout" class="logout-confirm-form">
+            <div class="logout-confirm-buttons">
+                <button type="submit" class="logout-confirm-btn-yes">
+                    Yes
+                </button>
+                <a href="/dashboard" class="logout-confirm-btn-no">
+                    No
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
