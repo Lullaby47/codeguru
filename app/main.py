@@ -8,7 +8,7 @@ from app.web.debug_routes import router as debug_router
 
 from app.db.base import Base, engine
 from app.auth.models import User
-from app.auth.category_progress import UserCategoryProgress  # Import for Alembic
+from app.auth.category_progress import UserCategoryProgress, DailyAssignment  # Import for table creation
 
 from app.auth.routes import router as auth_router
 from app.web.routes import router as web_router
@@ -30,6 +30,23 @@ if os.getenv("ENABLE_DEBUG_ROUTES", "0") == "1":
 
 # Create database tables (still useful in dev; in production prefer Alembic)
 Base.metadata.create_all(bind=engine)
+
+# Ensure new columns exist on user_category_progress (safe migration for SQLite)
+try:
+    from sqlalchemy import inspect as _insp, text as _text
+    _inspector = _insp(engine)
+    if "user_category_progress" in _inspector.get_table_names():
+        _cols = [c["name"] for c in _inspector.get_columns("user_category_progress")]
+        with engine.connect() as _conn:
+            if "solved_current_level_count" not in _cols:
+                _conn.execute(_text("ALTER TABLE user_category_progress ADD COLUMN solved_current_level_count INTEGER NOT NULL DEFAULT 0"))
+                print("[DB] Added user_category_progress.solved_current_level_count", flush=True)
+            if "fast_track_enabled" not in _cols:
+                _conn.execute(_text("ALTER TABLE user_category_progress ADD COLUMN fast_track_enabled BOOLEAN NOT NULL DEFAULT 0"))
+                print("[DB] Added user_category_progress.fast_track_enabled", flush=True)
+            _conn.commit()
+except Exception as e:
+    print("[DB] user_category_progress migration:", repr(e), flush=True)
 
 # Ensure challenges.is_active exists (per-user pool: never remove questions on solve; filter by is_active only)
 try:

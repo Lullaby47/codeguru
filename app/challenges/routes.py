@@ -452,309 +452,29 @@ def get_solved_count(
     return {"count": solved_count or 0}
 
 # ======================================================
-# GET NEXT UNSOLVED CHALLENGE FOR A LEVEL
+# GET NEXT UNSOLVED CHALLENGE FOR A CATEGORY  (Rules B, D, E)
 # ======================================================
 @router.get("/next/{level}")
 def get_next_challenge(
-    level: int,
+    level: int,                           # kept for URL compat; ignored when category given
     main_category: str = Query(None),
-    force_next_level: bool = Query(False),
+    force_next_level: bool = Query(False), # legacy param, ignored
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """
-    Get the next unsolved challenge for the CURRENT USER at a specific level.
-    Pool is global; exclusion is per-user only (submissions scoped by user_id).
-    Optional main_category filters pool to that category (for Learn More category picker).
-    
-    NOTE: When main_category is provided, uses per-category level instead of global level,
-    UNLESS force_next_level=true — then the level from the URL path is used as-is
-    (used by "Learn More" to fetch challenges from the next level).
+    Get the next unsolved challenge for the CURRENT USER.
+    When main_category is given: uses strict level == user's category level.
+    Respects daily cap (2/day) in normal mode, unlimited in fast-track.
     """
-    from sqlalchemy import distinct
-    from app.auth.category_level import get_user_category_level, sync_user_category_level
-    
-    # If category is provided, use per-category level; otherwise use provided level
-    # BUT if force_next_level is set, trust the level from URL (force learning flow)
+    from app.auth.category_level import get_next_challenge_for_category
+
     if main_category and main_category.strip():
-        category_level = sync_user_category_level(db, user.id, main_category.strip())
-        if force_next_level:
-            print(f"[API DEBUG] Force next level: using passed level {level} (category level is {category_level}) for category '{main_category.strip()}'", flush=True)
-        else:
-            level = category_level  # Override with category-specific level
-            print(f"[API DEBUG] Using per-category level: {category_level} for category '{main_category.strip()}'", flush=True)
+        result = get_next_challenge_for_category(db, user.id, main_category.strip())
+        return result
 
-    # Global pool: active pool challenges. Never exclude by other users' progress.
-    # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
-    if main_category and main_category.strip():
-        # When category is selected, check current level and next level for that category
-        print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE START =====", flush=True)
-        category_normalized = main_category.strip()
-        print(f"[API DEBUG] Received main_category: '{main_category}'", flush=True)
-        print(f"[API DEBUG] Normalized category: '{category_normalized}' (repr: {repr(category_normalized)})", flush=True)
-        print(f"[API DEBUG] User level: {level}", flush=True)
-        print(f"[API DEBUG] User ID: {user.id}", flush=True)
-        
-        # Query BOTH pool and daily challenges when filtering by category
-        # Pool challenges: challenge_date IS NULL
-        # Daily challenges: challenge_date IS NOT NULL
-        print(f"[API DEBUG] Querying pool challenges (challenge_date IS NULL)...", flush=True)
-        all_pool_challenges = db.query(Challenge).filter(
-            Challenge.challenge_date.is_(None),  # Pool challenges
-            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
-            Challenge.main_category.isnot(None),
-            Challenge.main_category != "",
-        ).all()
-        print(f"[API DEBUG] Found {len(all_pool_challenges)} total pool challenges with main_category set", flush=True)
-        
-        print(f"[API DEBUG] Querying daily challenges (challenge_date IS NOT NULL)...", flush=True)
-        all_daily_challenges = db.query(Challenge).filter(
-            Challenge.challenge_date.isnot(None),  # Daily challenges
-            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
-            Challenge.main_category.isnot(None),
-            Challenge.main_category != "",
-        ).all()
-        print(f"[API DEBUG] Found {len(all_daily_challenges)} total daily challenges with main_category set", flush=True)
-        
-        # Combine pool and daily challenges for category matching
-        all_challenges_with_category = all_pool_challenges + all_daily_challenges
-        
-        # Debug: show all categories in database with their exact values (pool + daily)
-        all_categories_in_db = {}
-        pool_categories = {}
-        daily_categories = {}
-        
-        for ch in all_pool_challenges:
-            if ch.main_category:
-                cat_key = ch.main_category.strip()
-                if cat_key not in pool_categories:
-                    pool_categories[cat_key] = []
-                pool_categories[cat_key].append((ch.id, ch.level, ch.title[:30], "POOL"))
-        
-        for ch in all_daily_challenges:
-            if ch.main_category:
-                cat_key = ch.main_category.strip()
-                if cat_key not in daily_categories:
-                    daily_categories[cat_key] = []
-                daily_categories[cat_key].append((ch.id, ch.level, ch.title[:30], "DAILY"))
-        
-        # Merge categories
-        for cat_key in set(list(pool_categories.keys()) + list(daily_categories.keys())):
-            all_categories_in_db[cat_key] = pool_categories.get(cat_key, []) + daily_categories.get(cat_key, [])
-        
-        print(f"[API DEBUG] Categories in DB (pool + daily challenges):", flush=True)
-        for cat_name, challenges_list in sorted(all_categories_in_db.items()):
-            match_indicator = "✓ MATCH" if cat_name.lower() == category_normalized.lower() else "  "
-            pool_count = len([c for c in challenges_list if c[3] == "POOL"])
-            daily_count = len([c for c in challenges_list if c[3] == "DAILY"])
-            print(f"[API DEBUG]   {match_indicator} '{cat_name}' (repr: {repr(cat_name)}) - {len(challenges_list)} total ({pool_count} pool, {daily_count} daily)", flush=True)
-            for ch_id, ch_level, ch_title, ch_type in challenges_list[:3]:
-                print(f"[API DEBUG]      Challenge {ch_id} [{ch_type}]: level {ch_level}, title: '{ch_title}'", flush=True)
-        
-        # Filter by category name (case-insensitive, trimmed) from BOTH pool and daily
-        print(f"[API DEBUG] Filtering by category name (case-insensitive) from pool + daily...", flush=True)
-        category_matched_pool = []
-        category_matched_daily = []
-        
-        for ch in all_pool_challenges:
-            if ch.main_category:
-                db_cat = ch.main_category.strip()
-                if db_cat.lower() == category_normalized.lower():
-                    category_matched_pool.append(ch)
-                    print(f"[API DEBUG]   MATCH [POOL]: Challenge {ch.id} - DB: '{db_cat}' == Search: '{category_normalized}'", flush=True)
-        
-        for ch in all_daily_challenges:
-            if ch.main_category:
-                db_cat = ch.main_category.strip()
-                if db_cat.lower() == category_normalized.lower():
-                    category_matched_daily.append(ch)
-                    print(f"[API DEBUG]   MATCH [DAILY]: Challenge {ch.id} - DB: '{db_cat}' == Search: '{category_normalized}'", flush=True)
-        
-        # Combine matched challenges (prefer pool, but include daily)
-        category_matched = category_matched_pool + category_matched_daily
-        
-        print(f"[API DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' ({len(category_matched_pool)} pool, {len(category_matched_daily)} daily)", flush=True)
-        
-        # When filtering by category, show challenges from user's level up to level+2
-        all_challenges = [
-            ch for ch in category_matched
-            if ch.level <= level + 2  # Show challenges up to 2 levels ahead
-        ]
-        
-        pool_after_level = len([ch for ch in all_challenges if ch.challenge_date is None])
-        daily_after_level = len([ch for ch in all_challenges if ch.challenge_date is not None])
-        print(f"[API DEBUG] After level filter (<= {level + 2}): {len(all_challenges)} challenges ({pool_after_level} pool, {daily_after_level} daily)", flush=True)
-        
-        # Debug: show what we found
-        if all_challenges:
-            print(f"[API DEBUG] Matching challenges after level filter:", flush=True)
-            for ch in all_challenges[:5]:
-                print(f"[API DEBUG]   Challenge {ch.id}: level {ch.level}, category: '{ch.main_category}', title: '{ch.title[:40]}'", flush=True)
-        else:
-            # Show what levels the category-matched challenges are at
-            if category_matched:
-                levels_found = sorted(set(ch.level for ch in category_matched))
-                print(f"[API DEBUG] ⚠️ Category '{category_normalized}' exists but challenges are at levels: {levels_found}", flush=True)
-                print(f"[API DEBUG] User is at level {level}, showing up to level {level + 2}", flush=True)
-            else:
-                print(f"[API DEBUG] ❌ No challenges found with category '{category_normalized}' in pool challenges", flush=True)
-                print(f"[API DEBUG] Check if category name matches exactly (case-insensitive)", flush=True)
-    else:
-        # No category filter - only get challenges at current level
-        q = db.query(Challenge).filter(
-            Challenge.level == level,
-            Challenge.challenge_date.is_(None),  # Only pool challenges (Learn More / Force Learning)
-            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
-        )
-        all_challenges = q.all()
-
-    # Per-user: only exclude challenges THIS user has solved (correct submission).
-    # If filtering by category, check solved challenges at all levels we're showing
-    if main_category and main_category.strip():
-        # Check solved challenges at all levels we're showing (up to level + 2)
-        solved_challenge_ids = (
-            db.query(distinct(Submission.challenge_id))
-            .join(Challenge, Challenge.id == Submission.challenge_id)
-            .filter(
-                Submission.user_id == user.id,
-                Submission.is_correct == 1,
-                Challenge.level <= level + 2,  # Check all levels we're showing
-            )
-            .all()
-        )
-    else:
-        # Only check solved challenges at current level
-        solved_challenge_ids = (
-            db.query(distinct(Submission.challenge_id))
-            .join(Challenge, Challenge.id == Submission.challenge_id)
-            .filter(
-                Submission.user_id == user.id,
-                Submission.is_correct == 1,
-                Challenge.level == level,
-            )
-            .all()
-        )
-    solved_ids = {row[0] for row in solved_challenge_ids}
-    print(f"[API DEBUG] User has solved {len(solved_ids)} challenges (levels <= {level + 2 if main_category and main_category.strip() else level})", flush=True)
-    if solved_ids:
-        print(f"[API DEBUG] Solved challenge IDs: {sorted(list(solved_ids))[:10]}", flush=True)
-
-    # Filter to unsolved for this user only
-    unsolved_challenges = [ch for ch in all_challenges if ch.id not in solved_ids]
-    print(f"[API DEBUG] After filtering solved challenges: {len(unsolved_challenges)} unsolved challenges remain", flush=True)
-    
-    if main_category and main_category.strip():
-        if unsolved_challenges:
-            print(f"[API DEBUG] ✓ Found {len(unsolved_challenges)} unsolved challenges in category '{category_normalized}'", flush=True)
-        else:
-            print(f"[API DEBUG] ❌ No unsolved challenges found in category '{category_normalized}'", flush=True)
-            if all_challenges:
-                solved_in_category = [ch.id for ch in all_challenges if ch.id in solved_ids]
-                print(f"[API DEBUG] All {len(all_challenges)} challenges in category are already solved by this user", flush=True)
-                print(f"[API DEBUG] Solved challenge IDs in category: {solved_in_category}", flush=True)
-
-    if unsolved_challenges:
-        print(f"[API DEBUG] Selecting random challenge from {len(unsolved_challenges)} unsolved challenges...", flush=True)
-        # Group unsolved challenges by category/subcategory
-        challenges_by_category = {}
-        for ch in unsolved_challenges:
-            key = (ch.main_category or "", ch.sub_category or "")
-            if key not in challenges_by_category:
-                challenges_by_category[key] = []
-            challenges_by_category[key].append(ch)
-
-        # If there are multiple categories, randomize which category to pick from
-        # Then randomize within that category
-        if challenges_by_category:
-            selected_category = random.choice(list(challenges_by_category.keys()))
-            category_challenges = challenges_by_category[selected_category]
-            selected_challenge = random.choice(category_challenges)
-            print(f"[API DEBUG] ✓ Selected challenge {selected_challenge.id} from category '{selected_category[0]}'", flush=True)
-            print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (SUCCESS) =====", flush=True)
-            return {"challenge_id": selected_challenge.id}
-
-        # Fallback: just randomize all unsolved challenges
-        selected_challenge = random.choice(unsolved_challenges)
-        print(f"[API DEBUG] ✓ Selected challenge {selected_challenge.id} (fallback)", flush=True)
-        print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (SUCCESS) =====", flush=True)
-        return {"challenge_id": selected_challenge.id}
-
-    # Category flow fallback: if everything in the selected category is solved,
-    # still return one category challenge instead of blank screen.
-    if main_category and main_category.strip():
-        if all_challenges:
-            fallback_challenge = random.choice(all_challenges)
-            print(
-                f"[API DEBUG] Category fallback: all challenges solved, returning challenge {fallback_challenge.id} for review/practice",
-                flush=True,
-            )
-            print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (CATEGORY FALLBACK) =====", flush=True)
-            return {"challenge_id": fallback_challenge.id, "all_solved": True}
-        if "category_matched" in locals() and category_matched:
-            fallback_challenge = random.choice(category_matched)
-            print(
-                f"[API DEBUG] Category fallback (outside level window): returning challenge {fallback_challenge.id}",
-                flush=True,
-            )
-            print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (CATEGORY OUT-OF-RANGE FALLBACK) =====", flush=True)
-            return {"challenge_id": fallback_challenge.id, "all_solved": True}
-    
-    print(f"[API DEBUG] ❌ No unsolved challenges available", flush=True)
-    print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (NO CHALLENGES) =====", flush=True)
-
-    # All challenges at this level are solved - check if we can level up
-    solved_count = len(solved_ids)
-    if solved_count >= level:
-        # User can level up - find challenges of next level (global pool, per-user exclusion)
-        next_level = level + 1
-        next_level_all = (
-            db.query(Challenge)
-            .filter(
-                Challenge.level == next_level,
-                Challenge.challenge_date.is_(None),
-                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
-            )
-            .all()
-        )
-        # Exclude challenges this user has already solved at next level
-        next_solved_ids = (
-            db.query(distinct(Submission.challenge_id))
-            .join(Challenge, Challenge.id == Submission.challenge_id)
-            .filter(
-                Submission.user_id == user.id,
-                Submission.is_correct == 1,
-                Challenge.level == next_level,
-            )
-            .all()
-        )
-        next_solved_set = {row[0] for row in next_solved_ids}
-        next_level_challenges = [ch for ch in next_level_all if ch.id not in next_solved_set]
-
-        if next_level_challenges:
-            # Group challenges by category/subcategory
-            challenges_by_category = {}
-            for ch in next_level_challenges:
-                key = (ch.main_category or "", ch.sub_category or "")
-                if key not in challenges_by_category:
-                    challenges_by_category[key] = []
-                challenges_by_category[key].append(ch)
-
-            # Randomize category, then randomize within category
-            if challenges_by_category:
-                selected_category = random.choice(list(challenges_by_category.keys()))
-                category_challenges = challenges_by_category[selected_category]
-                selected_challenge = random.choice(category_challenges)
-            else:
-                selected_challenge = random.choice(next_level_challenges)
-
-            # Update user level
-            user.level = next_level
-            db.add(user)
-            db.commit()
-            return {"challenge_id": selected_challenge.id}
-
-    # No more challenges available
-    return {"challenge_id": None}
+    # No category specified — return nothing (user must select category)
+    return {"challenge_id": None, "reason": "NO_CATEGORY", "message": "Select a category first."}
 
 # ======================================================
 # GET SUBCATEGORIES FOR A MAIN CATEGORY
@@ -1213,18 +933,18 @@ def get_challenge_by_id(
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # Allow access if challenge level is at user's level OR next level - use per-category
+    # Strict access: challenge level must equal user's category level
     from app.auth.category_level import get_user_category_level
     challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
     if challenge_category:
         user_level = get_user_category_level(db, user.id, challenge_category)
     else:
         user_level = user.level
-    if challenge.level > user_level + 2:
+    if challenge.level > user_level:
         cat_msg = f" for {challenge_category}" if challenge_category else ""
         raise HTTPException(
             status_code=403,
-            detail=f"Level {challenge.level} challenge requires level {challenge.level - 2} or higher. Your current level{cat_msg} is {user_level}."
+            detail=f"Level {challenge.level} challenge is above your current level{cat_msg} ({user_level})."
         )
 
     return {
@@ -1446,73 +1166,21 @@ def submit_challenge(
         else:
             debug_print(f"Attempt {attempt_number} - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
 
-    # Level progression: follow the rule (solved_count >= current_level)
-    # Only check if submission is correct
-    # NOTE: Now uses per-category level instead of global level
-    from app.auth.category_level import get_user_category_level, increment_user_category_level, sync_user_category_level
+    # Level progression: Rule C — solve N at level N, counter-based
+    from app.auth.category_level import record_solve_and_maybe_level_up
     
     level_up = False
-    old_level = None
-    new_level = None
+    old_level = user.level
+    new_level = user.level
     category_for_level = None
     
     if is_correct:
-        # Get challenge's category for per-category level tracking
         challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
-        
         if challenge_category:
-            # Use per-category level (sync first to fix stale levels)
-            current_level = sync_user_category_level(db, user.id, challenge_category)
-            old_level = current_level
-            
-            # Count distinct challenges solved correctly at current level OR HIGHER in this category
-            # This allows Learn More (next-level) challenges to also contribute to level-up
-            solved_count = (
-                db.query(func.count(distinct(Submission.challenge_id)))
-                .join(Challenge, Challenge.id == Submission.challenge_id)
-                .filter(
-                    Submission.user_id == user.id,
-                    Submission.is_correct == 1,
-                    Challenge.level >= current_level,
-                    Challenge.main_category == challenge_category,
-                )
-                .scalar()
-            ) or 0
-            
-            print(f"[API DEBUG] Category '{challenge_category}': solved {solved_count}/{current_level} challenges at level >= {current_level}", flush=True)
-            
-            # Check if user can level up: solved challenges >= current level
-            if solved_count >= current_level:
-                progress = increment_user_category_level(db, user.id, challenge_category)
-                new_level = progress.level
-                level_up = True
-                category_for_level = challenge_category
-                print(f"[API DEBUG] Category '{challenge_category}' level up: {old_level} -> {new_level}", flush=True)
-            else:
-                new_level = current_level
-        else:
-            # Fallback to global level if challenge has no category (daily challenges without category)
-            current_level = user.level
-            old_level = current_level
-            solved_count = (
-                db.query(func.count(distinct(Submission.challenge_id)))
-                .join(Challenge, Challenge.id == Submission.challenge_id)
-                .filter(
-                    Submission.user_id == user.id,
-                    Submission.is_correct == 1,
-                    Challenge.level == current_level,
-                )
-                .scalar()
-            ) or 0
-            
-            if solved_count >= current_level:
-                user.level = current_level + 1
-                db.add(user)
-                db.commit()
-                new_level = user.level
-                level_up = True
-            else:
-                new_level = current_level
+            level_up, old_level, new_level = record_solve_and_maybe_level_up(
+                db, user.id, challenge_category, challenge.level
+            )
+            category_for_level = challenge_category
 
     debug_print(f"Returning response - mentor_hint={'SET' if mentor_hint else 'None'}")
     logger.info(f"[MENTOR HINT] Returning response - mentor_hint={'SET' if mentor_hint else 'None'}")
@@ -1551,26 +1219,19 @@ def submit_force_challenge(
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # Allow access if challenge level is at user's level OR next level (for Learn More)
-    # Use per-category level when challenge has main_category
-    # Auto-sync level first to fix stale levels
-    from app.auth.category_level import get_user_category_level, increment_user_category_level, sync_user_category_level
+    # Strict access: challenge level must equal user's category level
+    from app.auth.category_level import get_user_category_level, record_solve_and_maybe_level_up
     challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
     if challenge_category:
-        user_level_for_cat = sync_user_category_level(db, user.id, challenge_category)
-        if challenge.level > user_level_for_cat + 2:
+        user_level_for_cat = get_user_category_level(db, user.id, challenge_category)
+        if challenge.level > user_level_for_cat:
             raise HTTPException(
                 status_code=403,
-                detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level for {challenge_category} is {user_level_for_cat}."
+                detail=f"Level {challenge.level} is above your level for {challenge_category} ({user_level_for_cat})."
             )
-        print(f"[API DEBUG] submit-force: category '{challenge_category}' level {user_level_for_cat}, challenge level {challenge.level}", flush=True)
+        print(f"[SUBMIT-FORCE] cat='{challenge_category}' user_level={user_level_for_cat} challenge_level={challenge.level}", flush=True)
     else:
-        user_level_for_cat = user.level  # Fallback for challenges without category
-        if challenge.level > user_level_for_cat + 1:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level is {user_level_for_cat}."
-            )
+        user_level_for_cat = user.level
 
     # ------------------------------------
     # FIRST EVER SUBMISSION (GLOBAL)
@@ -1700,66 +1361,17 @@ def submit_force_challenge(
         else:
             debug_print(f"Attempt {attempt_number} (force) - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
 
-    # Level progression: check if user can level up based on solved count
-    # FORCE LEARNING (pool challenges) helps users level up FASTER - uses per-category level
+    # Level progression: Rule C — solve N at level N, counter-based
     level_up = False
-    old_level = None
-    new_level = None
+    old_level = user_level_for_cat
+    new_level = user_level_for_cat
     if is_correct and challenge_category:
-        current_level = sync_user_category_level(db, user.id, challenge_category)
-        old_level = current_level
-        # Count distinct challenges solved correctly at current level OR HIGHER in this category
-        # This allows Learn More (next-level) challenges to also contribute to level-up
-        solved_count = (
-            db.query(func.count(distinct(Submission.challenge_id)))
-            .join(Challenge, Challenge.id == Submission.challenge_id)
-            .filter(
-                Submission.user_id == user.id,
-                Submission.is_correct == 1,
-                Challenge.level >= current_level,
-                Challenge.main_category == challenge_category,
-            )
-            .scalar()
-        ) or 0
-        print(f"[API DEBUG] submit-force: {challenge_category} solved {solved_count}/{current_level} at level >= {current_level}", flush=True)
-        if solved_count >= current_level:
-            progress = increment_user_category_level(db, user.id, challenge_category)
-            new_level = progress.level
-            level_up = True
-            print(f"[API DEBUG] submit-force level up: {challenge_category} {old_level} -> {new_level}", flush=True)
-        else:
-            new_level = current_level
-    elif is_correct and not challenge_category:
-        # Fallback: challenge has no category
-        old_level = user.level
-        current_level = user.level
-        solved_count = (
-            db.query(func.count(distinct(Submission.challenge_id)))
-            .join(Challenge, Challenge.id == Submission.challenge_id)
-            .filter(
-                Submission.user_id == user.id,
-                Submission.is_correct == 1,
-                Challenge.level == current_level,
-            )
-            .scalar()
-        ) or 0
-        if solved_count >= current_level:
-            user.level = current_level + 1
-            db.add(user)
-            db.commit()
-            new_level = user.level
-            level_up = True
-        else:
-            new_level = current_level
+        level_up, old_level, new_level = record_solve_and_maybe_level_up(
+            db, user.id, challenge_category, challenge.level
+        )
 
-    # Resolve current_level and old_level for response
-    if new_level is not None:
-        resp_current = new_level
-    elif challenge_category:
-        resp_current = get_user_category_level(db, user.id, challenge_category)
-    else:
-        resp_current = user.level
-    resp_old = old_level if old_level is not None else (resp_current - 1 if level_up else resp_current)
+    resp_current = new_level
+    resp_old = old_level
 
     logger.info(f"[MENTOR HINT] Returning response (force) - mentor_hint={'SET' if mentor_hint else 'None'}")
     
@@ -1776,6 +1388,23 @@ def submit_force_challenge(
         "old_level": resp_old,
         "mentor_hint": mentor_hint,
     }
+
+# ======================================================
+# ACTIVATE FAST TRACK (Learn More)  — Rule E
+# ======================================================
+@router.post("/learn-more/activate")
+def activate_fast_track(
+    main_category: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Permanently enable fast-track for this user+category."""
+    from app.auth.category_level import enable_fast_track
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    progress = enable_fast_track(db, user.id, main_category.strip())
+    return {"ok": True, "fast_track_enabled": True, "main_category": main_category.strip(), "level": progress.level}
+
 
 # ======================================================
 # ADMIN – CREATE CHALLENGE

@@ -125,27 +125,26 @@
             </div>
             {% endif %}
 
-            {% if today_completed and not edit_mode and not is_pool_challenge %}
+            {% if today_completed and not edit_mode %}
 
                 <div style="background: #1e1e1e; border: 1px solid #3e3e3e; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
-                    <h3 style="color: #00ff66; margin-bottom: 10px;">✅ Today's challenge completed</h3>
+                    <h3 style="color: #00ff66; margin-bottom: 10px;">✅ Today's challenges completed</h3>
                     <p style="color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                        You've already submitted today's solution.<br>
-                        Consistency beats rushing — come back tomorrow 🚀
+                        You've completed your daily challenges.<br>
+                        Come back tomorrow or enable Fast Track to keep going!
                     </p>
 
                     <div class="challenge-actions">
                         <a href="/journey" class="challenge-btn">📜 Journey</a>
-                        <a href="/journey" class="challenge-btn secondary">🔁 Improve via Journey</a>
                     </div>
 
                     <div style="background: #1a1400; color: #ffd166; border: 1px solid #332800; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; word-wrap: break-word;">
-                        ⚠️ <strong>Learn More</strong> lets you move faster, but deep mastery comes from spaced repetition, not speed.
+                        ⚡ <strong>Learn More</strong> enables permanent Fast Track — no daily limit, keep learning!
                     </div>
 
                     <div class="challenge-actions" style="margin-top: 15px;">
-                        <a href="/force-learning{% if challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
-                            ⚡ Learn More
+                        <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
+                            ⚡ Learn More (Fast Track)
                         </a>
                     </div>
                 </div>
@@ -216,8 +215,12 @@
         {% else %}
             {% if selected_category %}
             <div style="text-align: center; padding: 40px 20px; color: #888;">
+                {% if no_questions_message %}
+                <p style="font-size: 16px; margin-bottom: 10px;">{{ no_questions_message }}</p>
+                {% else %}
                 <p style="font-size: 16px; margin-bottom: 10px;">No challenges available in "{{ selected_category }}" at your current level.</p>
-                <p style="font-size: 14px; color: #666;">Try selecting a different category or level up to unlock more challenges.</p>
+                {% endif %}
+                <p style="font-size: 14px; color: #666;">Wait for Admin/Owner to add more questions, or try another category.</p>
             </div>
             {% else %}
             <div style="text-align: center; padding: 40px 20px; color: #888;">

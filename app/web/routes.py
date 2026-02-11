@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, or_
 
 from app.auth.models import User
-from app.auth.category_level import get_user_category_level, get_all_user_category_levels_as_list, sync_user_category_level
+from app.auth.category_level import (
+    get_user_category_level, get_all_user_category_levels_as_list,
+    sync_user_category_level, get_or_create_progress, is_fast_track,
+)
 from app.core.deps import get_current_user, get_admin, get_main_admin
 from app.core.config import MAIN_ADMIN_USER_ID
 from app.db.session import get_db, SessionLocal
@@ -342,6 +345,8 @@ def daily_challenge(
     print(f"[WEB DEBUG] Final categories list: {main_categories}", flush=True)
     
     challenge = None
+    no_questions_message = ""
+    selection_reason = None
     
     # Only show challenge if challenge_id is provided OR main_category is selected
     # Don't show challenge by default - user must select a category first
@@ -353,76 +358,33 @@ def daily_challenge(
         if challenge_r.status_code == 200:
             challenge = challenge_r.json()
     elif main_category:
-        # If main_category is provided, get a challenge from that category
-        # FastAPI automatically URL-decodes Query parameters
-        print(f"[WEB DEBUG] ===== CATEGORY FLOW START =====", flush=True)
+        # Category selected — use new strict-level selection
+        from app.auth.category_level import get_next_challenge_for_category
         category_normalized = main_category.strip()
-        category_level = sync_user_category_level(db, user.id, category_normalized)
-        print(f"[WEB DEBUG] Raw main_category from URL: '{main_category}' (type: {type(main_category)})", flush=True)
-        print(f"[WEB DEBUG] Synced per-category level for '{category_normalized}': {category_level} (user.id={user.id})", flush=True)
-        print(f"[WEB DEBUG] Normalized category (repr): {repr(category_normalized)}", flush=True)
-        
-        # Check what categories actually exist in DB for this user's level range
-        db_categories_check = (
-            db.query(Challenge.main_category, Challenge.level, func.count(Challenge.id).label('count'))
-            .filter(
-                Challenge.main_category.isnot(None),
-                Challenge.main_category != "",
-                Challenge.level <= category_level + 2,
-                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+        selection = get_next_challenge_for_category(db, user.id, category_normalized)
+        challenge_id_from_category = selection.get("challenge_id")
+        no_questions_message = selection.get("message", "")
+        selection_reason = selection.get("reason")
+
+        if challenge_id_from_category:
+            challenge_id = challenge_id_from_category
+            challenge_r = requests.get(
+                f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
             )
-            .group_by(Challenge.main_category, Challenge.level)
-            .all()
-        )
-        print(f"[WEB DEBUG] Categories in DB (level <= {category_level + 2}):", flush=True)
-        for cat, lev, cnt in db_categories_check:
-            match_status = "MATCH" if cat and cat.strip().lower() == category_normalized.lower() else "no match"
-            print(f"[WEB DEBUG]   '{cat}' (level {lev}, count {cnt}) - {match_status}", flush=True)
-        
-        # Make API request - use per-category level
-        api_url = f"{_api_base(request)}/challenge/next/{category_level}"
-        print(f"[WEB DEBUG] Calling API: {api_url}?main_category={category_normalized}", flush=True)
-        r = requests.get(
-            api_url,
-            params={"main_category": category_normalized},
-            cookies=request.cookies
-        )
-        print(f"[WEB DEBUG] API response status: {r.status_code}", flush=True)
-        print(f"[WEB DEBUG] API response headers: {dict(r.headers)}", flush=True)
-        
-        if r.status_code == 200:
-            result = r.json()
-            print(f"[WEB DEBUG] API response JSON: {result}", flush=True)
-            challenge_id_from_category = result.get("challenge_id")
-            print(f"[WEB DEBUG] Extracted challenge_id: {challenge_id_from_category}", flush=True)
-            
-            if challenge_id_from_category:
-                challenge_id = challenge_id_from_category
-                challenge_r = requests.get(
-                    f"{_api_base(request)}/challenge/{challenge_id_from_category}",
-                    cookies=request.cookies
-                )
-                if challenge_r.status_code == 200:
-                    challenge = challenge_r.json()
-                    print(f"[WEB DEBUG] Successfully loaded challenge: {challenge.get('title', 'N/A')}", flush=True)
-                else:
-                    print(f"[WEB DEBUG] Failed to load challenge details, status: {challenge_r.status_code}", flush=True)
-            else:
-                print(f"[WEB DEBUG] ⚠️ No challenge_id returned from API for category '{category_normalized}'", flush=True)
-                print(f"[WEB DEBUG] This means no unsolved challenges found in category", flush=True)
-        else:
-            print(f"[WEB DEBUG] ❌ API request failed with status {r.status_code}", flush=True)
-            print(f"[WEB DEBUG] Response text: {r.text[:500]}", flush=True)
-        
-        print(f"[WEB DEBUG] ===== CATEGORY FLOW END =====", flush=True)
+            if challenge_r.status_code == 200:
+                challenge = challenge_r.json()
+        print(f"[WEB] category='{category_normalized}' selection={selection.get('reason')} cid={challenge_id_from_category}", flush=True)
 
     today_completed = False
     previous_code = None
     challenge_already_solved = False
     progress_info = None
 
+    # Daily cap reached for this category?
+    if selection_reason == "DAILY_CAP_REACHED":
+        today_completed = True
+
     # Check if this is a pool challenge (Learn More) or daily challenge
-    # If challenge_id was set from latest submission, treat it as pool challenge
     is_pool_challenge = challenge_id is not None
 
     if challenge:
@@ -448,35 +410,16 @@ def daily_challenge(
             )
             challenge_already_solved = solved is not None
 
-            # Calculate progress for current level - use per-category level when category selected
-            # Auto-sync level first to fix stale levels
+            # Calculate progress using stored counter (Rule C)
             challenge_category = challenge.get("main_category") if challenge else None
             if challenge_category and challenge_category.strip():
-                current_level = sync_user_category_level(db, user.id, challenge_category)
-                print(f"[WEB DEBUG] Progress info using category '{challenge_category}' synced level: {current_level}", flush=True)
-                solved_count = (
-                    db.query(func.count(distinct(Submission.challenge_id)))
-                    .join(Challenge, Challenge.id == Submission.challenge_id)
-                    .filter(
-                        Submission.user_id == user.id,
-                        Submission.is_correct == 1,
-                        Challenge.level == current_level,
-                        Challenge.main_category == challenge_category.strip(),
-                    )
-                    .scalar()
-                ) or 0
+                from app.auth.category_level import get_or_create_progress
+                _prog = get_or_create_progress(db, user.id, challenge_category.strip())
+                current_level = _prog.level
+                solved_count = _prog.solved_current_level_count
             else:
-                current_level = 1  # Fallback when no category
-                solved_count = (
-                    db.query(func.count(distinct(Submission.challenge_id)))
-                    .join(Challenge, Challenge.id == Submission.challenge_id)
-                    .filter(
-                        Submission.user_id == user.id,
-                        Submission.is_correct == 1,
-                        Challenge.level == current_level,
-                    )
-                    .scalar()
-                ) or 0
+                current_level = 1
+                solved_count = 0
             required_count = current_level
             progress_info = {
                 "solved": solved_count,
@@ -519,13 +462,14 @@ def daily_challenge(
         {
             "request": request,
             "challenge": challenge,
-            "today_completed": today_completed and not edit and not is_pool_challenge and not is_category_challenge,
+            "today_completed": today_completed and not edit,
             "challenge_already_solved": challenge_already_solved if is_pool_challenge else False,
             "is_pool_challenge": is_pool_challenge or is_category_challenge,
             "progress_info": progress_info,
             "previous_code": previous_code,
             "edit_mode": bool(edit),
             "error_message": error_message,
+            "no_questions_message": no_questions_message,
             "user": user,
             "main_categories": main_categories,
             "selected_category": main_category,
@@ -892,132 +836,49 @@ def force_learning_page(
     db: Session = Depends(get_db),
 ):
     """
-    Learn More: user picks main category, then gets a challenge from the NEXT level
-    in that category so they can level up faster.
-    - No main_category: show category picker.
-    - With main_category: fetch challenge at category_level + 1 (next level).
+    Learn More: activates fast-track for the chosen category, then gets the next
+    challenge at the user's CURRENT level (no daily cap, immediate serving).
     """
+    from app.auth.category_level import enable_fast_track, get_next_challenge_for_category
+
     act = or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None))
-    # Primary source: categories with pool challenges
-    pool_categories = (
+    all_active_cats = (
         db.query(Challenge.main_category)
-        .filter(
-            Challenge.challenge_date.is_(None),
-            act,
-            Challenge.main_category.isnot(None),
-            Challenge.main_category != "",
-        )
-        .distinct()
-        .all()
+        .filter(Challenge.main_category.isnot(None), Challenge.main_category != "", act)
+        .distinct().all()
     )
-    main_categories = [r[0].strip() for r in pool_categories if r[0] and r[0].strip()]
+    main_categories = [r[0].strip() for r in all_active_cats if r[0] and r[0].strip()]
 
-    # Fallback source: if no pool categories, still show category options from all active challenges
-    # so "Choose category" always works and users can enter category challenge flow.
-    if not main_categories:
-        all_active_categories = (
-            db.query(Challenge.main_category)
-            .filter(
-                Challenge.main_category.isnot(None),
-                Challenge.main_category != "",
-                act,
-            )
-            .distinct()
-            .all()
-        )
-        main_categories = [r[0].strip() for r in all_active_categories if r[0] and r[0].strip()]
-        print(f"[WEB DEBUG] Force learning fallback categories (all active): {main_categories}", flush=True)
-
-    # If user already chose a category, try to get next challenge in that category
+    # If user chose a category → activate fast track and serve challenge
     if main_category and main_category.strip():
-        # Auto-sync level first (fixes cases where level wasn't incremented properly)
-        category_level = sync_user_category_level(db, user.id, main_category.strip())
-        next_level = category_level + 1  # Force learning gives NEXT level challenges
-        print(f"[WEB DEBUG] Force learning: category '{main_category.strip()}' synced level {category_level}, fetching level {next_level}", flush=True)
-        try:
-            r = requests.get(
-                f"{_api_base(request)}/challenge/next/{next_level}",
-                params={"main_category": main_category.strip(), "force_next_level": "true"},
-                cookies=request.cookies,
-                timeout=10,
-            )
-            if r.status_code == 200:
-                result = r.json()
-                challenge_id = result.get("challenge_id")
-                all_solved = result.get("all_solved", False)
-                if challenge_id and not all_solved:
-                    # Found an unsolved next-level challenge
-                    return RedirectResponse(
-                        url=f"/challenge?challenge_id={challenge_id}",
-                        status_code=303,
-                    )
-                if all_solved:
-                    # All challenges in this category are solved — show completion message
-                    print(f"[WEB DEBUG] Force learning: all challenges solved in '{main_category.strip()}' up to level {next_level}", flush=True)
-                    return templates.TemplateResponse(
-                        "force_learning_empty.html",
-                        {
-                            "request": request,
-                            "user": user,
-                            "main_categories": main_categories,
-                            "chosen_category": main_category.strip(),
-                            "chosen_category_level": category_level,
-                            "all_solved": True,
-                        },
-                    )
-                # If API has no direct challenge_id, fall back to category page flow
-                return RedirectResponse(
-                    url=f"/challenge?main_category={quote(main_category.strip())}",
-                    status_code=303,
-                )
-        except Exception as exc:
-            print(f"[WEB] /force-learning API error: {repr(exc)}", flush=True)
-            return RedirectResponse(
-                url=f"/challenge?main_category={quote(main_category.strip())}",
-                status_code=303,
-            )
-        # No challenge in this category - show empty with option to pick another
-        chosen_level = sync_user_category_level(db, user.id, main_category.strip())
+        cat = main_category.strip()
+        enable_fast_track(db, user.id, cat)
+
+        result = get_next_challenge_for_category(db, user.id, cat)
+        cid = result.get("challenge_id")
+        if cid:
+            return RedirectResponse(url=f"/challenge?challenge_id={cid}", status_code=303)
+
+        # No challenges available
         return templates.TemplateResponse(
             "force_learning_empty.html",
             {
-                "request": request,
-                "user": user,
+                "request": request, "user": user,
                 "main_categories": main_categories,
-                "chosen_category": main_category.strip(),
-                "chosen_category_level": chosen_level,
+                "chosen_category": cat,
+                "chosen_category_level": result.get("level", 1),
+                "all_solved": result.get("reason") == "ALL_SOLVED_AT_LEVEL",
+                "wait_message": result.get("message", ""),
             },
         )
 
-    # No category chosen: show category picker (or try any category and redirect)
+    # No category chosen
     if not main_categories:
         return templates.TemplateResponse(
             "force_learning_empty.html",
-            {
-                "request": request,
-                "user": user,
-                "main_categories": [],
-                "chosen_category": None,
-                "chosen_category_level": None,
-            },
+            {"request": request, "user": user, "main_categories": [],
+             "chosen_category": None, "chosen_category_level": None},
         )
-    # Single category: auto-use it and redirect if we get a challenge
-    if len(main_categories) == 1:
-        single_level = sync_user_category_level(db, user.id, main_categories[0])
-        try:
-            r = requests.get(
-                f"{_api_base(request)}/challenge/next/{single_level}",
-                params={"main_category": main_categories[0]},
-                cookies=request.cookies,
-                timeout=10,
-            )
-            if r.status_code == 200 and r.json().get("challenge_id"):
-                return RedirectResponse(
-                    url=f"/challenge?challenge_id={r.json()['challenge_id']}",
-                    status_code=303,
-                )
-        except Exception:
-            pass
     # Show category picker
     return templates.TemplateResponse(
         "force_learning_choose_category.html",
@@ -1440,8 +1301,10 @@ def admin_reset_user(
     # Delete all submissions for this user
     db.query(Submission).filter(Submission.user_id == user_id).delete()
     
-    # Delete all per-category progress
+    # Delete all per-category progress and daily assignments
     db.query(UserCategoryProgress).filter(UserCategoryProgress.user_id == user_id).delete()
+    from app.auth.category_progress import DailyAssignment
+    db.query(DailyAssignment).filter(DailyAssignment.user_id == user_id).delete()
     
     # Reset legacy user.level and streak
     target.level = 1

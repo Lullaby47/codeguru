@@ -7,12 +7,14 @@
     <div class="auth-card">
         <h1 class="auth-title">Learn More</h1>
         <p class="auth-subtitle" style="margin-bottom: 24px;">
-            {% if all_solved and chosen_category %}
-            🎉 You've completed all available challenges in <strong>{{ chosen_category }}</strong>! You're at Level {{ chosen_category_level|default(1) }}. New challenges will be added soon — try another category in the meantime!
+            {% if wait_message %}
+            {{ wait_message }}
+            {% elif all_solved and chosen_category %}
+            🎉 You've completed all available challenges in <strong>{{ chosen_category }}</strong> at Level {{ chosen_category_level|default(1) }}. Wait for Admin/Owner to add more questions.
             {% elif chosen_category %}
-            No unsolved questions left in <strong>{{ chosen_category }}</strong> (Level {{ chosen_category_level|default(1) }}). Try another category or check back later for new challenges.
+            No unsolved questions at Level {{ chosen_category_level|default(1) }} in <strong>{{ chosen_category }}</strong>. Wait for Admin/Owner to add more questions.
             {% else %}
-            No pool questions available for your level yet. Ask an admin or co-admin to add more questions to the pool.
+            No questions available. Wait for Admin/Owner to add more questions.
             {% endif %}
         </p>
         {% if main_categories and main_categories|length > 0 %}
