@@ -47,6 +47,12 @@
 .category-back-btn:hover {
     background: rgba(0, 255, 102, 0.16);
 }
+.cg-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff66, #00cc55);
+    border-radius: 6px;
+    transition: width 0.3s;
+}
 </style>
 {% set active_category = selected_category if selected_category else (challenge.main_category if challenge and challenge.main_category else None) %}
 {% set show_category_selector = not active_category and not challenge %}
@@ -133,10 +139,13 @@
                     <span style="font-size: 12px; color: #888;">{{ cur.solved }}/{{ cur.required }} to level up</span>
                 </div>
                 <!-- Progress bar (F1) -->
-                {% set pct = ((cur.solved / cur.required) * 100) if cur.required > 0 else 0 %}
+                {% set pct = ((cur.solved / cur.required) * 100)|int if cur.required > 0 else 0 %}
                 <div style="background: #1a1a1a; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #2a2a2a;">
-                    <div style="height: 100%; width: {{ pct|int }}%; background: linear-gradient(90deg, #00ff66, #00cc55); border-radius: 6px; transition: width 0.3s;"></div>
+                    <div class="cg-progress-fill" data-pct="{{ pct }}"></div>
                 </div>
+                <script>
+                (function(){var el=document.querySelector('.cg-progress-fill[data-pct]');if(el)el.style.width=el.getAttribute('data-pct')+'%';})();
+                </script>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px;">
                     <!-- Fast Track badge (F5) -->
                     {% if cur.fast_track %}

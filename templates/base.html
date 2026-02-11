@@ -243,27 +243,27 @@
                         </div>`;
                     }).join("");
                 }
-            })
+
                 // F8: Render achievements
-                const achContainer = overlay.querySelector(".profile-achievements-container");
+                var achContainer = overlay.querySelector(".profile-achievements-container");
                 if (achContainer && data.achievements) {
-                    const achs = data.achievements;
+                    var achs = data.achievements;
                     if (achs.length === 0) {
                         achContainer.innerHTML = '<div style="color:#666;font-size:12px;">No achievements yet</div>';
                     } else {
-                        achContainer.innerHTML = achs.map(a => {
-                            const opacity = a.earned ? '1' : '0.3';
-                            const border = a.earned ? '#00ff66' : '#333';
-                            return `<div style="opacity:${opacity};background:#0f0f0f;border:1px solid ${border};border-radius:8px;padding:8px 10px;text-align:center;min-width:70px;" title="${a.desc}">
-                                <div style="font-size:20px;">${a.icon}</div>
-                                <div style="font-size:10px;color:#ccc;margin-top:2px;">${a.label}</div>
-                            </div>`;
+                        achContainer.innerHTML = achs.map(function(a) {
+                            var opacity = a.earned ? '1' : '0.3';
+                            var bdr = a.earned ? '#00ff66' : '#333';
+                            return '<div style="opacity:' + opacity + ';background:#0f0f0f;border:1px solid ' + bdr + ';border-radius:8px;padding:8px 10px;text-align:center;min-width:70px;" title="' + a.desc + '">'
+                                + '<div style="font-size:20px;">' + a.icon + '</div>'
+                                + '<div style="font-size:10px;color:#ccc;margin-top:2px;">' + a.label + '</div>'
+                                + '</div>';
                         }).join("");
                     }
                 }
             })
-            .catch(() => {
-                const container = overlay.querySelector(".profile-levels-container");
+            .catch(function() {
+                var container = overlay.querySelector(".profile-levels-container");
                 if (container) container.innerHTML = '<div class="profile-level-empty">Unable to load</div>';
             });
         
