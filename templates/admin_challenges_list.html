@@ -8,18 +8,31 @@
 /* ===== LAYOUT ===== */
 .journey-layout {
     display: grid;
-    grid-template-columns: 220px 320px 1fr;
-    gap: 20px;
-    max-width: 1400px;
-    margin: 30px auto;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 100%;
+    margin: 20px auto;
+    padding: 0 16px;
+    box-sizing: border-box;
 }
 
-/* Modes */
-.journey-layout.tree-mode {
-    grid-template-columns: 220px 1fr;
-}
-.journey-layout.detail-mode {
-    grid-template-columns: 220px 1fr;
+/* Modes - Desktop only */
+@media (min-width: 720px) {
+    .journey-layout {
+        grid-template-columns: 220px 320px 1fr;
+        gap: 20px;
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 0;
+    }
+    
+    .journey-layout.tree-mode {
+        grid-template-columns: 220px 1fr;
+    }
+    
+    .journey-layout.detail-mode {
+        grid-template-columns: 220px 1fr;
+    }
 }
 
 /* Panels */
@@ -30,11 +43,16 @@
     border: 1px solid #1f1f1f;
     border-radius: 12px;
     padding: 18px;
+    width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
+.left-panel.hidden,
 .middle-panel.hidden,
 .right-panel.hidden {
-    display: none;
+    display: none !important;
 }
 
 /* ===== LEFT ===== */
@@ -49,13 +67,18 @@
 
 .left-panel .item {
     font-size: 13px;
-    padding: 8px 10px;
+    padding: 12px 10px;
     border-radius: 8px;
     cursor: pointer;
     color: #ccc;
     width: 100%;
     text-align: center;
     margin-bottom: 8px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-wrap: break-word;
 }
 
 .left-panel .item.active {
@@ -99,13 +122,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 10px;
+    padding: 12px 10px;
     border-radius: 8px;
     font-size: 13px;
     cursor: pointer;
     color: #bbb;
     transition: all 0.2s ease;
     margin-bottom: 4px;
+    min-height: 44px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .tree-item:hover {
