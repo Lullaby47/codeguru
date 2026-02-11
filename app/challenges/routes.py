@@ -39,6 +39,20 @@ from app.core.deps import get_current_user, get_admin
 router = APIRouter(prefix="/challenge", tags=["challenge"])
 
 
+def normalize_output_text(text: str) -> str:
+    """
+    Normalize execution/expected output before correctness checks.
+    Handles CRLF/LF differences and trailing spaces/newlines.
+    """
+    if text is None:
+        return ""
+    normalized = str(text).replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.rstrip() for line in normalized.split("\n")]
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines).strip()
+
+
 # ======================================================
 # MENTOR HINT GENERATOR
 # ======================================================
@@ -1176,8 +1190,10 @@ def submit_challenge(
             exec(code, {})
 
         output = buffer.getvalue().strip()
+        output_normalized = normalize_output_text(output)
+        expected_normalized = normalize_output_text(challenge.expected_output or "")
 
-        if output == challenge.expected_output.strip():
+        if output_normalized == expected_normalized:
             is_correct = 1
 
     except Exception as e:
@@ -1241,7 +1257,9 @@ def submit_challenge(
             # Trigger hint for:
             # Type A: Syntax/runtime errors (has_error = True)
             # Type B: Code runs but output is wrong (has_error = False, has_output = True, output != expected)
-            if has_error or (has_output and has_expected and output.strip() != challenge.expected_output.strip()):
+            output_normalized = normalize_output_text(output)
+            expected_normalized = normalize_output_text(challenge.expected_output or "")
+            if has_error or (has_output and has_expected and output_normalized != expected_normalized):
                 debug_print("Conditions met - calling OpenAI...")
                 mentor_hint = generate_mentor_hint_openai(
                     code=code,
@@ -1253,7 +1271,7 @@ def submit_challenge(
                 )
                 debug_print(f"OpenAI returned: {mentor_hint}")
             else:
-                debug_print(f"Conditions not met - has_error={has_error}, has_output={has_output}, output matches={output.strip() == challenge.expected_output.strip() if output and challenge.expected_output else False}")
+                debug_print(f"Conditions not met - has_error={has_error}, has_output={has_output}, output matches={output_normalized == expected_normalized if output and challenge.expected_output else False}")
         else:
             debug_print(f"Attempt {attempt_number} - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
 
@@ -1423,8 +1441,10 @@ def submit_force_challenge(
             exec(code, {})
 
         output = buffer.getvalue().strip()
+        output_normalized = normalize_output_text(output)
+        expected_normalized = normalize_output_text(challenge.expected_output or "")
 
-        if output == challenge.expected_output.strip():
+        if output_normalized == expected_normalized:
             is_correct = 1
 
     except Exception as e:
@@ -1482,7 +1502,9 @@ def submit_force_challenge(
             # Trigger hint for:
             # Type A: Syntax/runtime errors (has_error = True)
             # Type B: Code runs but output is wrong (has_error = False, has_output = True, output != expected)
-            if has_error or (has_output and has_expected and output.strip() != challenge.expected_output.strip()):
+            output_normalized = normalize_output_text(output)
+            expected_normalized = normalize_output_text(challenge.expected_output or "")
+            if has_error or (has_output and has_expected and output_normalized != expected_normalized):
                 debug_print("Conditions met (force) - calling OpenAI...")
                 mentor_hint = generate_mentor_hint_openai(
                     code=code,
@@ -1494,7 +1516,7 @@ def submit_force_challenge(
                 )
                 debug_print(f"OpenAI returned (force): {mentor_hint}")
             else:
-                debug_print(f"Conditions not met (force) - has_error={has_error}, has_output={has_output}, output matches={output.strip() == challenge.expected_output.strip() if output and challenge.expected_output else False}")
+                debug_print(f"Conditions not met (force) - has_error={has_error}, has_output={has_output}, output matches={output_normalized == expected_normalized if output and challenge.expected_output else False}")
         else:
             debug_print(f"Attempt {attempt_number} (force) - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
 
