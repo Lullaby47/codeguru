@@ -455,25 +455,37 @@ def get_next_challenge(
         Challenge.challenge_date.is_(None),  # Only pool challenges (Learn More / Force Learning)
         or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
     )
+    
     if main_category and main_category.strip():
         # Normalize the category: strip whitespace and use case-insensitive comparison
-        # Handle NULL values and ensure exact match (case-insensitive, trimmed)
         category_normalized = main_category.strip()
-        # Debug: print the category being searched
-        print(f"[DEBUG] Searching for category: '{category_normalized}' (normalized: '{category_normalized.lower()}')", flush=True)
-        # Filter by case-insensitive comparison, ensuring main_category is not NULL or empty
-        # First get all challenges, then filter in Python to handle any whitespace issues
-        q = q.filter(
+        print(f"[DEBUG] Searching for category: '{category_normalized}' at level {level}", flush=True)
+        
+        # First get all challenges at this level with main_category set
+        q_with_category = q.filter(
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
         )
-        all_challenges_before_filter = q.all()
+        all_challenges_before_filter = q_with_category.all()
+        
+        # Debug: print all categories found
+        unique_categories = set()
+        for ch in all_challenges_before_filter:
+            if ch.main_category:
+                unique_categories.add(ch.main_category.strip())
+        print(f"[DEBUG] Available categories at level {level}: {sorted(unique_categories)}", flush=True)
+        
         # Filter in Python to handle exact case-insensitive match with trimmed values
         all_challenges = [
             ch for ch in all_challenges_before_filter
             if ch.main_category and ch.main_category.strip().lower() == category_normalized.lower()
         ]
-        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' out of {len(all_challenges_before_filter)} total at level {level}", flush=True)
+        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' (searching for: '{category_normalized.lower()}') out of {len(all_challenges_before_filter)} total at level {level}", flush=True)
+        
+        # Debug: show what categories the matching challenges actually have
+        if all_challenges:
+            actual_categories = [ch.main_category.strip() for ch in all_challenges[:3]]
+            print(f"[DEBUG] Sample matching challenge categories: {actual_categories}", flush=True)
     else:
         all_challenges = q.all()
 

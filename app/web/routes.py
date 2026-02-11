@@ -300,27 +300,32 @@ def daily_challenge(
     )
     main_categories = [cat[0] for cat in main_categories if cat[0]]
     
-    # If challenge_id is provided (from force-learning), get that specific challenge
+    challenge = None
+    
+    # Only show challenge if challenge_id is provided OR main_category is selected
+    # Don't show challenge by default - user must select a category first
     if challenge_id:
+        # If challenge_id is provided (from force-learning), get that specific challenge
         challenge_r = requests.get(
             f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
         )
         if challenge_r.status_code == 200:
             challenge = challenge_r.json()
-        else:
-            challenge = None
     elif main_category:
         # If main_category is provided, get a challenge from that category
         # Use params instead of manual URL encoding to ensure proper encoding
         category_normalized = main_category.strip()
+        print(f"[WEB DEBUG] Requesting challenge for category: '{category_normalized}' at level {user.level}", flush=True)
         r = requests.get(
             f"{_api_base(request)}/challenge/next/{user.level}",
             params={"main_category": category_normalized},
             cookies=request.cookies
         )
+        print(f"[WEB DEBUG] API response status: {r.status_code}", flush=True)
         if r.status_code == 200:
             result = r.json()
             challenge_id_from_category = result.get("challenge_id")
+            print(f"[WEB DEBUG] API returned challenge_id: {challenge_id_from_category}", flush=True)
             if challenge_id_from_category:
                 challenge_id = challenge_id_from_category  # Set challenge_id for category-selected challenge
                 challenge_r = requests.get(
@@ -329,20 +334,13 @@ def daily_challenge(
                 )
                 if challenge_r.status_code == 200:
                     challenge = challenge_r.json()
+                    print(f"[WEB DEBUG] Successfully loaded challenge: {challenge.get('title', 'N/A')}", flush=True)
                 else:
-                    challenge = None
+                    print(f"[WEB DEBUG] Failed to load challenge details, status: {challenge_r.status_code}", flush=True)
             else:
-                challenge = None
+                print(f"[WEB DEBUG] No challenge_id returned from API for category '{category_normalized}'", flush=True)
         else:
-            challenge = None
-    else:
-        # Always get today's level-appropriate challenge (not latest submission)
-        # This ensures users get a fresh challenge every 24 hours based on their level
-        r = requests.get(f"{_api_base(request)}/challenge/today", cookies=request.cookies)
-        if r.status_code == 200:
-            challenge = r.json()
-        else:
-            challenge = None
+            print(f"[WEB DEBUG] API request failed with status {r.status_code}: {r.text[:200]}", flush=True)
 
     today_completed = False
     previous_code = None

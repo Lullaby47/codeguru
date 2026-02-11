@@ -187,7 +187,17 @@
             {% endif %}
 
         {% else %}
-            <p>No challenge available today.</p>
+            {% if selected_category %}
+            <div style="text-align: center; padding: 40px 20px; color: #888;">
+                <p style="font-size: 16px; margin-bottom: 10px;">No challenges available in "{{ selected_category }}" at your current level.</p>
+                <p style="font-size: 14px; color: #666;">Try selecting a different category or level up to unlock more challenges.</p>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 40px 20px; color: #888;">
+                <p style="font-size: 16px; margin-bottom: 10px;">👆 Please select a category above to get started.</p>
+                <p style="font-size: 14px; color: #666;">Choose a category to see challenges from that topic.</p>
+            </div>
+            {% endif %}
         {% endif %}
 
     </div>
