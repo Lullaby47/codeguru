@@ -556,9 +556,23 @@ def get_next_challenge(
             .all()
         )
     solved_ids = {row[0] for row in solved_challenge_ids}
+    print(f"[API DEBUG] User has solved {len(solved_ids)} challenges (levels <= {level + 2 if main_category and main_category.strip() else level})", flush=True)
+    if solved_ids:
+        print(f"[API DEBUG] Solved challenge IDs: {sorted(list(solved_ids))[:10]}", flush=True)
 
     # Filter to unsolved for this user only
     unsolved_challenges = [ch for ch in all_challenges if ch.id not in solved_ids]
+    print(f"[API DEBUG] After filtering solved challenges: {len(unsolved_challenges)} unsolved challenges remain", flush=True)
+    
+    if main_category and main_category.strip():
+        if unsolved_challenges:
+            print(f"[API DEBUG] ✓ Found {len(unsolved_challenges)} unsolved challenges in category '{category_normalized}'", flush=True)
+        else:
+            print(f"[API DEBUG] ❌ No unsolved challenges found in category '{category_normalized}'", flush=True)
+            if all_challenges:
+                solved_in_category = [ch.id for ch in all_challenges if ch.id in solved_ids]
+                print(f"[API DEBUG] All {len(all_challenges)} challenges in category are already solved by this user", flush=True)
+                print(f"[API DEBUG] Solved challenge IDs in category: {solved_in_category}", flush=True)
 
     if unsolved_challenges:
         # Group unsolved challenges by category/subcategory
