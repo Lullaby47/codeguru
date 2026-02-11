@@ -11,7 +11,10 @@
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s ease;
-    display: inline-block;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
 }
 .category-btn.active {
     background: rgba(0, 255, 102, 0.15);
@@ -51,7 +54,7 @@
 <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <h3 style="color: #00ff66; font-size: 16px; margin: 0 0 16px 0; font-weight: 600;">📚 Select Category</h3>
     {% if main_categories is defined and main_categories and main_categories|length > 0 %}
-    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
         {% for category in main_categories %}
         <a href="/challenge?main_category={{ category|urlencode }}" class="category-btn {% if selected_category == category %}active{% else %}inactive{% endif %}">
             {{ category }}
