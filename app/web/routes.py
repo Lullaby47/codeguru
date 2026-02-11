@@ -319,6 +319,7 @@ def daily_challenge(
             result = r.json()
             challenge_id_from_category = result.get("challenge_id")
             if challenge_id_from_category:
+                challenge_id = challenge_id_from_category  # Set challenge_id for category-selected challenge
                 challenge_r = requests.get(
                     f"{_api_base(request)}/challenge/{challenge_id_from_category}",
                     cookies=request.cookies
