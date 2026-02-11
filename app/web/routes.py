@@ -284,9 +284,22 @@ def daily_challenge(
     edit: int = 0,
     error_message: str = Query(None),
     challenge_id: int = Query(None),
+    main_category: str = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Get list of main categories for the category selector
+    main_categories = (
+        db.query(distinct(Challenge.main_category))
+        .filter(
+            Challenge.main_category.isnot(None),
+            Challenge.main_category != "",
+        )
+        .order_by(Challenge.main_category)
+        .all()
+    )
+    main_categories = [cat[0] for cat in main_categories if cat[0]]
+    
     # If challenge_id is provided (from force-learning), get that specific challenge
     if challenge_id:
         challenge_r = requests.get(
@@ -294,6 +307,28 @@ def daily_challenge(
         )
         if challenge_r.status_code == 200:
             challenge = challenge_r.json()
+        else:
+            challenge = None
+    elif main_category:
+        # If main_category is provided, get a challenge from that category
+        r = requests.get(
+            f"{_api_base(request)}/challenge/next/{user.level}?main_category={main_category}",
+            cookies=request.cookies
+        )
+        if r.status_code == 200:
+            result = r.json()
+            challenge_id_from_category = result.get("challenge_id")
+            if challenge_id_from_category:
+                challenge_r = requests.get(
+                    f"{_api_base(request)}/challenge/{challenge_id_from_category}",
+                    cookies=request.cookies
+                )
+                if challenge_r.status_code == 200:
+                    challenge = challenge_r.json()
+                else:
+                    challenge = None
+            else:
+                challenge = None
         else:
             challenge = None
     else:
@@ -383,19 +418,24 @@ def daily_challenge(
                     if sub.status_code == 200:
                         previous_code = sub.json().get("code")
 
+    # Determine if this is a category-selected challenge
+    is_category_challenge = main_category is not None and challenge_id is None
+    
     return templates.TemplateResponse(
         "challenge.html",
         {
             "request": request,
             "challenge": challenge,
-            "today_completed": today_completed and not edit and not is_pool_challenge,
+            "today_completed": today_completed and not edit and not is_pool_challenge and not is_category_challenge,
             "challenge_already_solved": challenge_already_solved if is_pool_challenge else False,
-            "is_pool_challenge": is_pool_challenge,
+            "is_pool_challenge": is_pool_challenge or is_category_challenge,
             "progress_info": progress_info,
             "previous_code": previous_code,
             "edit_mode": bool(edit),
             "error_message": error_message,
             "user": user,
+            "main_categories": main_categories,
+            "selected_category": main_category,
         },
     )
 
