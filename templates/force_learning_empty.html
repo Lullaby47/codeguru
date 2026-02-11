@@ -8,9 +8,9 @@
         <h1 class="auth-title">Learn More</h1>
         <p class="auth-subtitle" style="margin-bottom: 24px;">
             {% if chosen_category %}
-            No unsolved questions left in <strong>{{ chosen_category }}</strong> for your level. Try another category or ask an admin to add more pool questions.
+            No unsolved questions left in <strong>{{ chosen_category }}</strong> (Level {{ chosen_category_level|default(1) }}). Try another category or ask an admin to add more pool questions.
             {% else %}
-            No pool questions available for your level yet. Ask an admin or co-admin to add more questions to the pool for Level {{ user.level }}.
+            No pool questions available for your level yet. Ask an admin or co-admin to add more questions to the pool.
             {% endif %}
         </p>
         {% if main_categories and main_categories|length > 0 %}

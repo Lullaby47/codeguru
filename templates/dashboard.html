@@ -22,9 +22,20 @@
             {% endif %}
 
             <div class="dashboard-cards">
-                <div class="dashboard-card-item">
-                    <div class="dashboard-card-label">LEVEL</div>
-                    <div class="dashboard-card-value">{{ level }}</div>
+                <div class="dashboard-card-item dashboard-card-item-levels">
+                    <div class="dashboard-card-label">CATEGORY LEVELS</div>
+                    <div class="dashboard-levels-container">
+                        {% if category_levels and category_levels|length > 0 %}
+                            {% for item in category_levels[:3] %}
+                            <div class="dashboard-level-item">{{ item.main_category }}: {{ item.level }}</div>
+                            {% endfor %}
+                            {% if category_levels|length > 3 %}
+                            <div class="dashboard-level-viewall"><a href="/challenge">View all</a></div>
+                            {% endif %}
+                        {% else %}
+                            <div class="dashboard-level-empty">No categories yet</div>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="dashboard-card-item">

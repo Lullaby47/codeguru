@@ -13,7 +13,8 @@ from app.auth.category_progress import UserCategoryProgress  # Import for Alembi
 from app.auth.routes import router as auth_router
 from app.web.routes import router as web_router
 from app.challenges.routes import router as challenge_router
-from app.submissions.routes import router as submission_router  # 🔥 ADD THIS
+from app.submissions.routes import router as submission_router
+from app.api.routes import router as api_router
 
 
 app = FastAPI(title="CodeGuru", version="0.1.0")
@@ -53,7 +54,8 @@ except Exception as e:
 app.include_router(auth_router)
 app.include_router(web_router)
 app.include_router(challenge_router)
-app.include_router(submission_router)  # 🔥 ADD THIS
+app.include_router(submission_router)
+app.include_router(api_router)
 
 
 # Redirect root to login page

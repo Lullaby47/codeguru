@@ -24,7 +24,7 @@ class User(Base):
         default=lambda: str(uuid.uuid4())
     )
 
-    level = Column(Integer, default=1)
+    level = Column(Integer, default=1)  # DEPRECATED: Use user_category_progress for per-category levels
     streak = Column(Integer, default=0)
 
     # User role: "user" (default), "coadmin", "admin"

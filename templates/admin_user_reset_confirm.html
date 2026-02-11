@@ -8,7 +8,7 @@
         <h1 class="logout-confirm-title">Reset User Progress</h1>
         <p class="logout-confirm-message">
             Are you sure you want to reset progress for "<strong>{{ target_user.username }}</strong>"?<br>
-            <span style="color: #ff4444; font-size: 14px;">This will delete all their submissions and reset their level to 1.</span>
+            <span style="color: #ff4444; font-size: 14px;">This will delete all their submissions and reset all category levels to 1.</span>
         </p>
         
         <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left;">
@@ -16,7 +16,7 @@
             <div style="color: #999; font-size: 12px; line-height: 1.6;">
                 <div><strong>Username:</strong> {{ target_user.username }}</div>
                 <div><strong>Email:</strong> {{ target_user.email }}</div>
-                <div><strong>Current Level:</strong> {{ target_user.level }}</div>
+                <div><strong>Category Levels:</strong> {{ category_levels_summary }}</div>
                 <div><strong>Current Streak:</strong> {{ target_user.streak }}</div>
                 <div><strong>Role:</strong> {{ target_user.role }}</div>
             </div>
@@ -26,7 +26,7 @@
             <div style="color: #ffd84d; font-size: 13px; line-height: 1.6;">
                 ⚠️ <strong>This action will:</strong><br>
                 • Delete all submissions for this user<br>
-                • Reset level to 1<br>
+                • Reset all category levels to 1<br>
                 • Reset streak to 0<br>
                 • User will need to start from the beginning
             </div>

@@ -36,7 +36,7 @@
                     <th>ID</th>
                     <th>Username</th>
                     <th>Email</th>
-                    <th>Level</th>
+                    <th>Category Levels</th>
                     <th>Role</th>
                     <th>Actions</th>
                 </tr>
@@ -47,7 +47,7 @@
                     <td>{{ u.id }}</td>
                     <td>{{ u.username }}</td>
                     <td>{{ u.email }}</td>
-                    <td>{{ u.level }}</td>
+                    <td>{{ u.category_levels }}</td>
                     <td>
                         {% if u.is_main_admin %}
                             <span class="badge main-admin">Main Admin</span>

@@ -1028,11 +1028,18 @@ def get_challenge_by_id(
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # Allow access if challenge level is at user's level OR next level (for Learn More)
-    if challenge.level > user.level + 1:
+    # Allow access if challenge level is at user's level OR next level - use per-category
+    from app.auth.category_level import get_user_category_level
+    challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
+    if challenge_category:
+        user_level = get_user_category_level(db, user.id, challenge_category)
+    else:
+        user_level = user.level
+    if challenge.level > user_level + 1:
+        cat_msg = f" for {challenge_category}" if challenge_category else ""
         raise HTTPException(
             status_code=403,
-            detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level is {user.level}."
+            detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level{cat_msg} is {user_level}."
         )
 
     return {
@@ -1355,11 +1362,24 @@ def submit_force_challenge(
         raise HTTPException(status_code=404, detail="Challenge not found")
 
     # Allow access if challenge level is at user's level OR next level (for Learn More)
-    if challenge.level > user.level + 1:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level is {user.level}."
-        )
+    # Use per-category level when challenge has main_category
+    from app.auth.category_level import get_user_category_level, increment_user_category_level
+    challenge_category = challenge.main_category if challenge.main_category and challenge.main_category.strip() else None
+    if challenge_category:
+        user_level_for_cat = get_user_category_level(db, user.id, challenge_category)
+        if challenge.level > user_level_for_cat + 1:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level for {challenge_category} is {user_level_for_cat}."
+            )
+        print(f"[API DEBUG] submit-force: category '{challenge_category}' level {user_level_for_cat}, challenge level {challenge.level}", flush=True)
+    else:
+        user_level_for_cat = user.level  # Fallback for challenges without category
+        if challenge.level > user_level_for_cat + 1:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Level {challenge.level} challenge requires level {challenge.level - 1} or higher. Your current level is {user_level_for_cat}."
+            )
 
     # ------------------------------------
     # FIRST EVER SUBMISSION (GLOBAL)
@@ -1479,16 +1499,13 @@ def submit_force_challenge(
             debug_print(f"Attempt {attempt_number} (force) - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
 
     # Level progression: check if user can level up based on solved count
-    # FORCE LEARNING (pool challenges) helps users level up FASTER by allowing them to solve
-    # multiple challenges at their current level. This counts ALL challenges (both daily and pool)
-    # at the current level, so solving pool challenges immediately contributes to level progression.
+    # FORCE LEARNING (pool challenges) helps users level up FASTER - uses per-category level
     level_up = False
-    old_level = user.level
-    if is_correct:
-        current_level = user.level
-        # Count distinct challenges solved correctly at user's current level
-        # This includes BOTH daily challenges (with challenge_date) AND pool challenges (challenge_date is None)
-        # This is the core function of force learning - to level users up faster by solving multiple challenges
+    old_level = None
+    new_level = None
+    if is_correct and challenge_category:
+        current_level = get_user_category_level(db, user.id, challenge_category)
+        old_level = current_level
         solved_count = (
             db.query(func.count(distinct(Submission.challenge_id)))
             .join(Challenge, Challenge.id == Submission.challenge_id)
@@ -1496,21 +1513,49 @@ def submit_force_challenge(
                 Submission.user_id == user.id,
                 Submission.is_correct == 1,
                 Challenge.level == current_level,
-                # Note: We don't filter by challenge_date here, so pool challenges count too!
+                Challenge.main_category == challenge_category,
             )
             .scalar()
         ) or 0
-
-        # Check if user can level up: solved challenges >= current level
-        # Level up happens IMMEDIATELY when solving force learning challenges (no need to wait for tomorrow)
+        if solved_count >= current_level:
+            progress = increment_user_category_level(db, user.id, challenge_category)
+            new_level = progress.level
+            level_up = True
+            print(f"[API DEBUG] submit-force level up: {challenge_category} {old_level} -> {new_level}", flush=True)
+        else:
+            new_level = current_level
+    elif is_correct and not challenge_category:
+        # Fallback: challenge has no category
+        old_level = user.level
+        current_level = user.level
+        solved_count = (
+            db.query(func.count(distinct(Submission.challenge_id)))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level == current_level,
+            )
+            .scalar()
+        ) or 0
         if solved_count >= current_level:
             user.level = current_level + 1
             db.add(user)
             db.commit()
+            new_level = user.level
             level_up = True
+        else:
+            new_level = current_level
 
-    logger.info(f"[MENTOR HINT] Returning response (force) - mentor_hint={'SET' if mentor_hint else 'None'}")
-    
+    # Resolve current_level and old_level for response
+    if new_level is not None:
+        resp_current = new_level
+    elif challenge_category:
+        resp_current = get_user_category_level(db, user.id, challenge_category)
+    else:
+        resp_current = user.level
+    resp_old = old_level if old_level is not None else (resp_current - 1 if level_up else resp_current)
+
     logger.info(f"[MENTOR HINT] Returning response (force) - mentor_hint={'SET' if mentor_hint else 'None'}")
     
     return {
@@ -1521,10 +1566,10 @@ def submit_force_challenge(
         "first_time_global": first_time_global,
         "attempt_number": attempt_number,
         "is_retry": bool(is_retry),
-        "current_level": user.level,
-        "level_up": level_up,  # Flag indicating if user leveled up
-        "old_level": old_level,  # Previous level before this submission
-        "mentor_hint": mentor_hint,  # Mentor hint if triggered (None otherwise)
+        "current_level": resp_current,
+        "level_up": level_up,
+        "old_level": resp_old,
+        "mentor_hint": mentor_hint,
     }
 
 # ======================================================

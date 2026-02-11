@@ -45,7 +45,6 @@
     <div class="nav-left">
         <!-- User Profile Icon -->
         <div class="user-profile-icon" id="userProfileIcon" title="Your Profile" 
-             data-user-level="{% if user %}{{ user.level }}{% else %}1{% endif %}"
              data-username="{% if user %}{{ user.username }}{% else %}Guest{% endif %}"
              data-email="{% if user %}{{ user.email }}{% else %}guest@example.com{% endif %}"
              data-streak="{% if user %}{{ user.streak }}{% else %}0{% endif %}"
@@ -172,27 +171,27 @@
         });
     }
 
-    // Show Profile Modal
+    // Show Profile Modal (fetches category levels from /api/me/progress)
     function showProfileModal() {
-        // Try desktop icon first, fall back to mobile icon
         const profileIcon = document.getElementById("userProfileIcon") || document.getElementById("userProfileIconMobile");
         if (!profileIcon) return;
 
-        const userLevel = profileIcon.getAttribute("data-user-level") || "1";
         const username = profileIcon.getAttribute("data-username") || "Guest";
-        const email = profileIcon.getAttribute("data-email") || "guest@example.com";
         const streak = profileIcon.getAttribute("data-streak") || "0";
         const verified = profileIcon.getAttribute("data-verified") || "No";
 
         const overlay = document.createElement("div");
         overlay.className = "profile-overlay";
+        overlay.setAttribute("aria-hidden", "false");
         overlay.innerHTML = `
             <div class="profile-modal" onclick="event.stopPropagation()">
                 <h2>${username}</h2>
                 <div class="profile-stats">
-                    <div class="profile-stat">
-                        <div class="profile-stat-label">Level</div>
-                        <div class="profile-stat-value">${userLevel}</div>
+                    <div class="profile-stat profile-stat-levels">
+                        <div class="profile-stat-label">Category Levels</div>
+                        <div class="profile-levels-container">
+                            <div class="profile-levels-loading">Loading...</div>
+                        </div>
                     </div>
                     <div class="profile-stat">
                         <div class="profile-stat-label">Streak</div>
@@ -213,9 +212,29 @@
         
         document.body.appendChild(overlay);
         
-        // Dismiss on click anywhere
+        // Fetch category levels
+        fetch("/api/me/progress", { credentials: "same-origin" })
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => {
+                const container = overlay.querySelector(".profile-levels-container");
+                if (!container) return;
+                const levels = data.category_levels || [];
+                if (levels.length === 0) {
+                    container.innerHTML = '<div class="profile-level-empty">No categories yet</div>';
+                } else {
+                    container.innerHTML = levels.map(item => 
+                        `<div class="profile-level-item">${item.main_category}: ${item.level}</div>`
+                    ).join("");
+                }
+            })
+            .catch(() => {
+                const container = overlay.querySelector(".profile-levels-container");
+                if (container) container.innerHTML = '<div class="profile-level-empty">Unable to load</div>';
+            });
+        
         overlay.addEventListener("click", function() {
             overlay.style.animation = "fadeOut 0.3s ease";
+            overlay.setAttribute("aria-hidden", "true");
             setTimeout(() => overlay.remove(), 300);
         });
     }

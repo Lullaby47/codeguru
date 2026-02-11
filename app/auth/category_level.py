@@ -107,3 +107,50 @@ def get_all_user_category_levels(db: Session, user_id: int) -> dict[str, int]:
     
     return {record.main_category: record.level for record in progress_records}
 
+
+def get_all_user_category_levels_as_list(
+    db: Session, user_id: int, include_all_categories: bool = True
+) -> list[dict]:
+    """
+    Get all category levels for a user as a list of {main_category, level}.
+    If include_all_categories is True, includes ALL categories from challenges table
+    (categories user hasn't started get default level 1).
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        include_all_categories: If True, include categories from DB even if user has no progress
+    
+    Returns:
+        List of {"main_category": str, "level": int} sorted by main_category
+    """
+    from sqlalchemy import distinct, or_
+    from app.challenges.models import Challenge
+    
+    user_levels = get_all_user_category_levels(db, user_id)
+    
+    if include_all_categories:
+        all_categories = (
+            db.query(distinct(Challenge.main_category))
+            .filter(
+                Challenge.main_category.isnot(None),
+                Challenge.main_category != "",
+                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+            )
+            .order_by(Challenge.main_category)
+            .all()
+        )
+        category_names = [c[0].strip() for c in all_categories if c[0] and c[0].strip()]
+        result = [
+            {"main_category": cat, "level": user_levels.get(cat, 1)}
+            for cat in category_names
+        ]
+    else:
+        result = [
+            {"main_category": cat, "level": lev}
+            for cat, lev in user_levels.items()
+        ]
+        result.sort(key=lambda x: x["main_category"])
+    
+    return result
+

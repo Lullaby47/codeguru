@@ -701,6 +701,50 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     color: var(--text);
 }
 
+/* Category levels: 2-col desktop, 1-col mobile, scrollable if long */
+.dashboard-card-item-levels {
+    grid-column: 1 / -1;
+}
+.dashboard-levels-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.dashboard-level-item {
+    font-size: 13px;
+    color: var(--text);
+    padding: 6px 10px;
+    background: rgba(0, 255, 102, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 102, 0.2);
+}
+.dashboard-level-viewall {
+    grid-column: 1 / -1;
+    text-align: center;
+    margin-top: 4px;
+}
+.dashboard-level-viewall a {
+    color: var(--green);
+    font-size: 13px;
+    text-decoration: none;
+}
+.dashboard-level-viewall a:hover {
+    text-decoration: underline;
+}
+.dashboard-level-empty {
+    font-size: 13px;
+    color: #777;
+    padding: 8px 0;
+}
+@media (max-width: 600px) {
+    .dashboard-levels-container {
+        grid-template-columns: 1fr;
+    }
+}
+
 .dashboard-cta {
     display: block;
     width: 100%;
@@ -1242,6 +1286,38 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     margin: 24px 0;
+}
+
+.profile-stat-levels {
+    grid-column: 1 / -1;
+}
+.profile-levels-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    max-height: 140px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.profile-level-item {
+    font-size: 13px;
+    color: var(--green);
+    padding: 6px 10px;
+    background: rgba(0, 255, 102, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 102, 0.2);
+}
+.profile-level-empty,
+.profile-levels-loading {
+    font-size: 13px;
+    color: #777;
+    padding: 8px 0;
+    grid-column: 1 / -1;
+}
+@media (max-width: 600px) {
+    .profile-levels-container {
+        grid-template-columns: 1fr;
+    }
 }
 
 .profile-stat {
