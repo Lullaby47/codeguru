@@ -35,9 +35,6 @@
 <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <h3 style="color: #00ff66; font-size: 16px; margin: 0 0 16px 0; font-weight: 600;">📚 Select Category</h3>
     <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <a href="/challenge" class="category-btn {% if not selected_category %}active{% else %}inactive{% endif %}">
-            All Categories
-        </a>
         {% for category in main_categories %}
         <a href="/challenge?main_category={{ category|urlencode }}" class="category-btn {% if selected_category == category %}active{% else %}inactive{% endif %}">
             {{ category }}

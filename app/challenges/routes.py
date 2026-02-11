@@ -459,12 +459,18 @@ def get_next_challenge(
         # Normalize the category: strip whitespace and use case-insensitive comparison
         # Handle NULL values and ensure exact match (case-insensitive, trimmed)
         category_normalized = main_category.strip()
+        # Debug: print the category being searched
+        print(f"[DEBUG] Searching for category: '{category_normalized}' (normalized: '{category_normalized.lower()}')", flush=True)
         # Filter by case-insensitive comparison, ensuring main_category is not NULL or empty
+        # Use func.trim to handle any leading/trailing whitespace in database
         q = q.filter(
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
-            func.lower(Challenge.main_category) == category_normalized.lower()
+            func.lower(func.trim(Challenge.main_category)) == category_normalized.lower()
         )
+        # Debug: count matching challenges
+        matching_count = q.count()
+        print(f"[DEBUG] Found {matching_count} challenges matching category '{category_normalized}'", flush=True)
     all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
