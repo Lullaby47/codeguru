@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, or_
 
 from app.auth.models import User
-from app.auth.category_level import get_user_category_level, get_all_user_category_levels_as_list
+from app.auth.category_level import get_user_category_level, get_all_user_category_levels_as_list, sync_user_category_level
 from app.core.deps import get_current_user, get_admin, get_main_admin
 from app.core.config import MAIN_ADMIN_USER_ID
 from app.db.session import get_db, SessionLocal
@@ -357,9 +357,9 @@ def daily_challenge(
         # FastAPI automatically URL-decodes Query parameters
         print(f"[WEB DEBUG] ===== CATEGORY FLOW START =====", flush=True)
         category_normalized = main_category.strip()
-        category_level = get_user_category_level(db, user.id, category_normalized)
+        category_level = sync_user_category_level(db, user.id, category_normalized)
         print(f"[WEB DEBUG] Raw main_category from URL: '{main_category}' (type: {type(main_category)})", flush=True)
-        print(f"[WEB DEBUG] Per-category level for '{category_normalized}': {category_level} (deprecated user.level not used)", flush=True)
+        print(f"[WEB DEBUG] Synced per-category level for '{category_normalized}': {category_level} (user.id={user.id})", flush=True)
         print(f"[WEB DEBUG] Normalized category (repr): {repr(category_normalized)}", flush=True)
         
         # Check what categories actually exist in DB for this user's level range
@@ -452,7 +452,6 @@ def daily_challenge(
             # Auto-sync level first to fix stale levels
             challenge_category = challenge.get("main_category") if challenge else None
             if challenge_category and challenge_category.strip():
-                from app.auth.category_level import sync_user_category_level
                 current_level = sync_user_category_level(db, user.id, challenge_category)
                 print(f"[WEB DEBUG] Progress info using category '{challenge_category}' synced level: {current_level}", flush=True)
                 solved_count = (
@@ -932,7 +931,6 @@ def force_learning_page(
     # If user already chose a category, try to get next challenge in that category
     if main_category and main_category.strip():
         # Auto-sync level first (fixes cases where level wasn't incremented properly)
-        from app.auth.category_level import sync_user_category_level
         category_level = sync_user_category_level(db, user.id, main_category.strip())
         next_level = category_level + 1  # Force learning gives NEXT level challenges
         print(f"[WEB DEBUG] Force learning: category '{main_category.strip()}' synced level {category_level}, fetching level {next_level}", flush=True)
@@ -979,7 +977,7 @@ def force_learning_page(
                 status_code=303,
             )
         # No challenge in this category - show empty with option to pick another
-        chosen_level = get_user_category_level(db, user.id, main_category.strip())
+        chosen_level = sync_user_category_level(db, user.id, main_category.strip())
         return templates.TemplateResponse(
             "force_learning_empty.html",
             {
@@ -1005,7 +1003,7 @@ def force_learning_page(
         )
     # Single category: auto-use it and redirect if we get a challenge
     if len(main_categories) == 1:
-        single_level = get_user_category_level(db, user.id, main_categories[0])
+        single_level = sync_user_category_level(db, user.id, main_categories[0])
         try:
             r = requests.get(
                 f"{_api_base(request)}/challenge/next/{single_level}",
