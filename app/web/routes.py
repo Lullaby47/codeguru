@@ -833,7 +833,7 @@ def force_learning_page(
     - No main_category: show category picker (categories that have pool challenges at user's level).
     - With main_category: fetch next unsolved challenge in that category; redirect to challenge or show empty.
     """
-    from sqlalchemy import or_
+    # Note: or_ is already imported at top of file
     level = user.level
     # Pool challenges at this level (same filter as API: active or NULL is_active)
     act = or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None))
