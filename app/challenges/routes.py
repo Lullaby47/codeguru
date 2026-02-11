@@ -507,16 +507,16 @@ def get_next_challenge(
         all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
-    # If filtering by category, check solved challenges at both current and next level
+    # If filtering by category, check solved challenges at all levels we're showing
     if main_category and main_category.strip():
-        # Check solved challenges at both levels since we're showing challenges from both
+        # Check solved challenges at all levels we're showing (up to level + 2)
         solved_challenge_ids = (
             db.query(distinct(Submission.challenge_id))
             .join(Challenge, Challenge.id == Submission.challenge_id)
             .filter(
                 Submission.user_id == user.id,
                 Submission.is_correct == 1,
-                Challenge.level.in_([level, level + 1]),  # Check both levels
+                Challenge.level <= level + 2,  # Check all levels we're showing
             )
             .all()
         )
