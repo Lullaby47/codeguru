@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, or_
-from datetime import date
+from datetime import date, timedelta
 import io
 import contextlib
 import random
@@ -651,20 +651,96 @@ def get_today_challenge(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Get today's challenge, but only if user's level is sufficient."""
-    challenge = (
-        db.query(Challenge)
-        .filter(Challenge.challenge_date == date.today())
+    """
+    Get today's challenge based on user's level and completion status.
+    - If user completed yesterday's challenge and has solved enough challenges at their level,
+      they get a challenge from the next level.
+    - Otherwise, they get a challenge from their current level.
+    - Always selects an unsolved challenge for today's date.
+    """
+    # Determine the appropriate level for today's challenge
+    target_level = user.level
+    
+    # Check if user completed yesterday's daily challenge
+    yesterday = date.today() - timedelta(days=1)
+    yesterday_challenge_completed = (
+        db.query(Submission)
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(
+            Submission.user_id == user.id,
+            Challenge.challenge_date == yesterday,
+            Submission.is_correct == 1,
+        )
         .first()
+    ) is not None
+    
+    # If user completed yesterday's challenge, check if they should progress
+    if yesterday_challenge_completed:
+        # Count distinct challenges solved correctly at user's current level
+        solved_count = (
+            db.query(func.count(distinct(Submission.challenge_id)))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level == user.level,
+            )
+            .scalar()
+        ) or 0
+        
+        # If user solved enough challenges at current level, they should get next level challenge
+        if solved_count >= user.level:
+            target_level = user.level + 1
+    
+    # Get all challenges for today's date at the target level
+    today_challenges = (
+        db.query(Challenge)
+        .filter(
+            Challenge.challenge_date == date.today(),
+            Challenge.level == target_level,
+        )
+        .all()
     )
-
-    if not challenge:
+    
+    if not today_challenges:
+        # No challenges available for today at this level
         return None
-
-    # Allow access if challenge level is at user's level OR next level (for Learn More)
-    if challenge.level > user.level + 1:
-        return None  # Don't show challenge if it's more than one level ahead
-
+    
+    # Get all challenge IDs the user has solved correctly
+    solved_challenge_ids = (
+        db.query(distinct(Submission.challenge_id))
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(
+            Submission.user_id == user.id,
+            Submission.is_correct == 1,
+        )
+        .all()
+    )
+    solved_ids = {row[0] for row in solved_challenge_ids}
+    
+    # Filter to unsolved challenges
+    unsolved_challenges = [ch for ch in today_challenges if ch.id not in solved_ids]
+    
+    # If no unsolved challenges at target level, try current level
+    if not unsolved_challenges and target_level > user.level:
+        current_level_challenges = (
+            db.query(Challenge)
+            .filter(
+                Challenge.challenge_date == date.today(),
+                Challenge.level == user.level,
+            )
+            .all()
+        )
+        unsolved_challenges = [ch for ch in current_level_challenges if ch.id not in solved_ids]
+        target_level = user.level
+    
+    # If still no unsolved challenges, return any challenge (user has solved all)
+    if not unsolved_challenges:
+        challenge = today_challenges[0]  # Return first available challenge
+    else:
+        # Randomly select from unsolved challenges
+        challenge = random.choice(unsolved_challenges)
+    
     return {
         "id": challenge.id,
         "level": challenge.level,
@@ -802,11 +878,64 @@ def submit_challenge(
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    # Get today's challenge appropriate for user's level
+    # First check if user completed yesterday's challenge to determine target level
+    yesterday = date.today() - timedelta(days=1)
+    yesterday_challenge_completed = (
+        db.query(Submission)
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(
+            Submission.user_id == user.id,
+            Challenge.challenge_date == yesterday,
+            Submission.is_correct == 1,
+        )
+        .first()
+    ) is not None
+    
+    # Determine target level
+    target_level = user.level
+    if yesterday_challenge_completed:
+        solved_count = (
+            db.query(func.count(distinct(Submission.challenge_id)))
+            .join(Challenge, Challenge.id == Submission.challenge_id)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.is_correct == 1,
+                Challenge.level == user.level,
+            )
+            .scalar()
+        ) or 0
+        if solved_count >= user.level:
+            target_level = user.level + 1
+    
+    # Get challenge for today at target level (or current level if no next level challenge)
     challenge = (
         db.query(Challenge)
-        .filter(Challenge.challenge_date == date.today())
+        .filter(
+            Challenge.challenge_date == date.today(),
+            Challenge.level == target_level,
+        )
         .first()
     )
+    
+    # Fallback to current level if no challenge at target level
+    if not challenge and target_level > user.level:
+        challenge = (
+            db.query(Challenge)
+            .filter(
+                Challenge.challenge_date == date.today(),
+                Challenge.level == user.level,
+            )
+            .first()
+        )
+    
+    # Final fallback: any challenge for today
+    if not challenge:
+        challenge = (
+            db.query(Challenge)
+            .filter(Challenge.challenge_date == date.today())
+            .first()
+        )
 
     if not challenge:
         raise HTTPException(status_code=400, detail="No challenge today")

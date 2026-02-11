@@ -297,31 +297,13 @@ def daily_challenge(
         else:
             challenge = None
     else:
-        # Get the latest challenge the user has attempted (most recent submission)
-        latest_submission = (
-            db.query(Submission)
-            .filter(Submission.user_id == user.id)
-            .order_by(Submission.created_at.desc())
-            .first()
-        )
-
-        if latest_submission:
-            # Get the challenge from the latest submission
-            challenge_r = requests.get(
-                f"{_api_base(request)}/challenge/{latest_submission.challenge_id}",
-                cookies=request.cookies,
-            )
-            if challenge_r.status_code == 200:
-                challenge = challenge_r.json()
-                challenge_id = (
-                    latest_submission.challenge_id
-                )  # Set challenge_id for consistency
-            else:
-                challenge = None
+        # Always get today's level-appropriate challenge (not latest submission)
+        # This ensures users get a fresh challenge every 24 hours based on their level
+        r = requests.get(f"{_api_base(request)}/challenge/today", cookies=request.cookies)
+        if r.status_code == 200:
+            challenge = r.json()
         else:
-            # If user has no submissions yet, get today's challenge
-            r = requests.get(f"{_api_base(request)}/challenge/today", cookies=request.cookies)
-            challenge = r.json() if r.status_code == 200 else None
+            challenge = None
 
     today_completed = False
     previous_code = None
