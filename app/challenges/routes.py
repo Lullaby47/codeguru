@@ -477,12 +477,14 @@ def get_next_challenge(
         ]
         print(f"[DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' (all levels)", flush=True)
         
-        # Now filter by level (current level or next level)
+        # When filtering by category, show challenges from user's level up to level+2
+        # This gives users access to more challenges when they select a specific category
+        # If no challenges at user's level, they can still see what's available
         all_challenges = [
             ch for ch in category_matched
-            if ch.level == level or ch.level == level + 1
+            if ch.level <= level + 2  # Show challenges up to 2 levels ahead
         ]
-        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' at level {level} or {level + 1}", flush=True)
+        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' at level <= {level + 2}", flush=True)
         
         # Debug: show what we found
         if all_challenges:
@@ -492,7 +494,9 @@ def get_next_challenge(
             # Show what levels the category-matched challenges are at
             if category_matched:
                 levels_found = sorted(set(ch.level for ch in category_matched))
-                print(f"[DEBUG] Category '{category_normalized}' exists but challenges are at levels: {levels_found} (user is at level {level})", flush=True)
+                print(f"[DEBUG] Category '{category_normalized}' exists but challenges are at levels: {levels_found} (user is at level {level}, showing up to level {level + 2})", flush=True)
+            else:
+                print(f"[DEBUG] No challenges found with category '{category_normalized}' in pool challenges", flush=True)
     else:
         # No category filter - only get challenges at current level
         q = db.query(Challenge).filter(
