@@ -351,21 +351,54 @@ def daily_challenge(
             challenge = challenge_r.json()
     elif main_category:
         # If main_category is provided, get a challenge from that category
-        # Use params instead of manual URL encoding to ensure proper encoding
+        # FastAPI automatically URL-decodes Query parameters
+        print(f"[WEB DEBUG] ===== CATEGORY FLOW START =====", flush=True)
+        print(f"[WEB DEBUG] Raw main_category from URL: '{main_category}' (type: {type(main_category)})", flush=True)
+        print(f"[WEB DEBUG] User level: {user.level}", flush=True)
+        
+        # Normalize the category
         category_normalized = main_category.strip()
-        print(f"[WEB DEBUG] Requesting challenge for category: '{category_normalized}' at level {user.level}", flush=True)
+        print(f"[WEB DEBUG] Normalized category: '{category_normalized}'", flush=True)
+        print(f"[WEB DEBUG] Normalized category (repr): {repr(category_normalized)}", flush=True)
+        print(f"[WEB DEBUG] Normalized category length: {len(category_normalized)}", flush=True)
+        
+        # Check what categories actually exist in DB for this user's level range
+        from sqlalchemy import distinct, or_
+        db_categories_check = (
+            db.query(Challenge.main_category, Challenge.level, func.count(Challenge.id).label('count'))
+            .filter(
+                Challenge.main_category.isnot(None),
+                Challenge.main_category != "",
+                Challenge.level <= user.level + 2,
+                or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+            )
+            .group_by(Challenge.main_category, Challenge.level)
+            .all()
+        )
+        print(f"[WEB DEBUG] Categories in DB (level <= {user.level + 2}):", flush=True)
+        for cat, lev, cnt in db_categories_check:
+            match_status = "MATCH" if cat and cat.strip().lower() == category_normalized.lower() else "no match"
+            print(f"[WEB DEBUG]   '{cat}' (level {lev}, count {cnt}) - {match_status}", flush=True)
+        
+        # Make API request
+        api_url = f"{_api_base(request)}/challenge/next/{user.level}"
+        print(f"[WEB DEBUG] Calling API: {api_url}?main_category={category_normalized}", flush=True)
         r = requests.get(
-            f"{_api_base(request)}/challenge/next/{user.level}",
+            api_url,
             params={"main_category": category_normalized},
             cookies=request.cookies
         )
         print(f"[WEB DEBUG] API response status: {r.status_code}", flush=True)
+        print(f"[WEB DEBUG] API response headers: {dict(r.headers)}", flush=True)
+        
         if r.status_code == 200:
             result = r.json()
+            print(f"[WEB DEBUG] API response JSON: {result}", flush=True)
             challenge_id_from_category = result.get("challenge_id")
-            print(f"[WEB DEBUG] API returned challenge_id: {challenge_id_from_category}", flush=True)
+            print(f"[WEB DEBUG] Extracted challenge_id: {challenge_id_from_category}", flush=True)
+            
             if challenge_id_from_category:
-                challenge_id = challenge_id_from_category  # Set challenge_id for category-selected challenge
+                challenge_id = challenge_id_from_category
                 challenge_r = requests.get(
                     f"{_api_base(request)}/challenge/{challenge_id_from_category}",
                     cookies=request.cookies
@@ -376,9 +409,13 @@ def daily_challenge(
                 else:
                     print(f"[WEB DEBUG] Failed to load challenge details, status: {challenge_r.status_code}", flush=True)
             else:
-                print(f"[WEB DEBUG] No challenge_id returned from API for category '{category_normalized}'", flush=True)
+                print(f"[WEB DEBUG] ⚠️ No challenge_id returned from API for category '{category_normalized}'", flush=True)
+                print(f"[WEB DEBUG] This means no unsolved challenges found in category", flush=True)
         else:
-            print(f"[WEB DEBUG] API request failed with status {r.status_code}: {r.text[:200]}", flush=True)
+            print(f"[WEB DEBUG] ❌ API request failed with status {r.status_code}", flush=True)
+            print(f"[WEB DEBUG] Response text: {r.text[:500]}", flush=True)
+        
+        print(f"[WEB DEBUG] ===== CATEGORY FLOW END =====", flush=True)
 
     today_completed = False
     previous_code = None

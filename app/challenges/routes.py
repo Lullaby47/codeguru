@@ -452,51 +452,74 @@ def get_next_challenge(
     # Treat is_active IS NULL as visible (backward compat; co-admin/new challenges).
     if main_category and main_category.strip():
         # When category is selected, check current level and next level for that category
+        print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE START =====", flush=True)
         category_normalized = main_category.strip()
-        print(f"[DEBUG] Searching for category: '{category_normalized}' at level {level} and {level + 1}", flush=True)
+        print(f"[API DEBUG] Received main_category: '{main_category}'", flush=True)
+        print(f"[API DEBUG] Normalized category: '{category_normalized}' (repr: {repr(category_normalized)})", flush=True)
+        print(f"[API DEBUG] User level: {level}", flush=True)
+        print(f"[API DEBUG] User ID: {user.id}", flush=True)
         
         # Get ALL pool challenges with this category (any level) first to debug
+        print(f"[API DEBUG] Querying pool challenges...", flush=True)
         all_pool_challenges = db.query(Challenge).filter(
             Challenge.challenge_date.is_(None),  # Only pool challenges
             or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
         ).all()
+        print(f"[API DEBUG] Found {len(all_pool_challenges)} total pool challenges with main_category set", flush=True)
         
-        # Debug: show all categories in database
-        all_categories_in_db = set()
+        # Debug: show all categories in database with their exact values
+        all_categories_in_db = {}
         for ch in all_pool_challenges:
             if ch.main_category:
-                all_categories_in_db.add(ch.main_category.strip())
-        print(f"[DEBUG] All categories in database (pool challenges): {sorted(all_categories_in_db)}", flush=True)
+                cat_key = ch.main_category.strip()
+                if cat_key not in all_categories_in_db:
+                    all_categories_in_db[cat_key] = []
+                all_categories_in_db[cat_key].append((ch.id, ch.level, ch.title[:30]))
+        
+        print(f"[API DEBUG] Categories in DB (pool challenges):", flush=True)
+        for cat_name, challenges_list in sorted(all_categories_in_db.items()):
+            match_indicator = "✓ MATCH" if cat_name.lower() == category_normalized.lower() else "  "
+            print(f"[API DEBUG]   {match_indicator} '{cat_name}' (repr: {repr(cat_name)}) - {len(challenges_list)} challenges", flush=True)
+            for ch_id, ch_level, ch_title in challenges_list[:3]:
+                print(f"[API DEBUG]      Challenge {ch_id}: level {ch_level}, title: '{ch_title}'", flush=True)
         
         # Filter by category name (case-insensitive, trimmed)
-        category_matched = [
-            ch for ch in all_pool_challenges
-            if ch.main_category and ch.main_category.strip().lower() == category_normalized.lower()
-        ]
-        print(f"[DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' (all levels)", flush=True)
+        print(f"[API DEBUG] Filtering by category name (case-insensitive)...", flush=True)
+        category_matched = []
+        for ch in all_pool_challenges:
+            if ch.main_category:
+                db_cat = ch.main_category.strip()
+                db_cat_lower = db_cat.lower()
+                search_cat_lower = category_normalized.lower()
+                if db_cat_lower == search_cat_lower:
+                    category_matched.append(ch)
+                    print(f"[API DEBUG]   MATCH: Challenge {ch.id} - DB: '{db_cat}' == Search: '{category_normalized}'", flush=True)
+        
+        print(f"[API DEBUG] Found {len(category_matched)} challenges with category '{category_normalized}' (all levels)", flush=True)
         
         # When filtering by category, show challenges from user's level up to level+2
-        # This gives users access to more challenges when they select a specific category
-        # If no challenges at user's level, they can still see what's available
         all_challenges = [
             ch for ch in category_matched
             if ch.level <= level + 2  # Show challenges up to 2 levels ahead
         ]
-        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' at level <= {level + 2}", flush=True)
+        print(f"[API DEBUG] After level filter (<= {level + 2}): {len(all_challenges)} challenges", flush=True)
         
         # Debug: show what we found
         if all_challenges:
-            actual_info = [(ch.id, ch.main_category.strip(), ch.level, ch.title[:30]) for ch in all_challenges[:5]]
-            print(f"[DEBUG] Sample matching challenges (id, category, level, title): {actual_info}", flush=True)
+            print(f"[API DEBUG] Matching challenges after level filter:", flush=True)
+            for ch in all_challenges[:5]:
+                print(f"[API DEBUG]   Challenge {ch.id}: level {ch.level}, category: '{ch.main_category}', title: '{ch.title[:40]}'", flush=True)
         else:
             # Show what levels the category-matched challenges are at
             if category_matched:
                 levels_found = sorted(set(ch.level for ch in category_matched))
-                print(f"[DEBUG] Category '{category_normalized}' exists but challenges are at levels: {levels_found} (user is at level {level}, showing up to level {level + 2})", flush=True)
+                print(f"[API DEBUG] ⚠️ Category '{category_normalized}' exists but challenges are at levels: {levels_found}", flush=True)
+                print(f"[API DEBUG] User is at level {level}, showing up to level {level + 2}", flush=True)
             else:
-                print(f"[DEBUG] No challenges found with category '{category_normalized}' in pool challenges", flush=True)
+                print(f"[API DEBUG] ❌ No challenges found with category '{category_normalized}' in pool challenges", flush=True)
+                print(f"[API DEBUG] Check if category name matches exactly (case-insensitive)", flush=True)
     else:
         # No category filter - only get challenges at current level
         q = db.query(Challenge).filter(
