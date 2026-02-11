@@ -3,7 +3,6 @@
 {% block content %}
 
 <!-- Category Selector -->
-{% if main_categories is defined and main_categories and main_categories|length > 0 %}
 <style>
 .category-btn {
     padding: 10px 20px;
@@ -34,6 +33,7 @@
 </style>
 <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <h3 style="color: #00ff66; font-size: 16px; margin: 0 0 16px 0; font-weight: 600;">📚 Select Category</h3>
+    {% if main_categories is defined and main_categories and main_categories|length > 0 %}
     <div style="display: flex; flex-wrap: wrap; gap: 10px;">
         {% for category in main_categories %}
         <a href="/challenge?main_category={{ category|urlencode }}" class="category-btn {% if selected_category == category %}active{% else %}inactive{% endif %}">
@@ -41,8 +41,12 @@
         </a>
         {% endfor %}
     </div>
+    {% else %}
+    <div style="color: #888; font-size: 14px; padding: 10px 0;">
+        No categories available. Admin needs to create challenges with categories.
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <div class="challenge-main-container">
     <div class="challenge-editor-box">
