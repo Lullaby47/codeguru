@@ -575,6 +575,7 @@ def get_next_challenge(
                 print(f"[API DEBUG] Solved challenge IDs in category: {solved_in_category}", flush=True)
 
     if unsolved_challenges:
+        print(f"[API DEBUG] Selecting random challenge from {len(unsolved_challenges)} unsolved challenges...", flush=True)
         # Group unsolved challenges by category/subcategory
         challenges_by_category = {}
         for ch in unsolved_challenges:
@@ -589,11 +590,18 @@ def get_next_challenge(
             selected_category = random.choice(list(challenges_by_category.keys()))
             category_challenges = challenges_by_category[selected_category]
             selected_challenge = random.choice(category_challenges)
+            print(f"[API DEBUG] ✓ Selected challenge {selected_challenge.id} from category '{selected_category[0]}'", flush=True)
+            print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (SUCCESS) =====", flush=True)
             return {"challenge_id": selected_challenge.id}
 
         # Fallback: just randomize all unsolved challenges
         selected_challenge = random.choice(unsolved_challenges)
+        print(f"[API DEBUG] ✓ Selected challenge {selected_challenge.id} (fallback)", flush=True)
+        print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (SUCCESS) =====", flush=True)
         return {"challenge_id": selected_challenge.id}
+    
+    print(f"[API DEBUG] ❌ No unsolved challenges available", flush=True)
+    print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (NO CHALLENGES) =====", flush=True)
 
     # All challenges at this level are solved - check if we can level up
     solved_count = len(solved_ids)
