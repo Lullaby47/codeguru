@@ -3,7 +3,7 @@
 {% block content %}
 
 <!-- Category Selector -->
-{% if main_categories and main_categories|length > 0 %}
+{% if main_categories is defined and main_categories and main_categories|length > 0 %}
 <style>
 .category-btn {
     padding: 10px 20px;

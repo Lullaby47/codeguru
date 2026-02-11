@@ -570,6 +570,21 @@ def submit_challenge_ui(
 
             previous_code = code
 
+            # Get categories for the template
+            from sqlalchemy import distinct, or_
+            main_categories = (
+                db.query(distinct(Challenge.main_category))
+                .filter(
+                    Challenge.main_category.isnot(None),
+                    Challenge.main_category != "",
+                    Challenge.challenge_date.is_(None),
+                    or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+                )
+                .order_by(Challenge.main_category)
+                .all()
+            )
+            main_categories = [cat[0] for cat in main_categories if cat[0]]
+            
             return templates.TemplateResponse(
                 "challenge.html",
                 {
@@ -581,6 +596,8 @@ def submit_challenge_ui(
                     "error_message": "Your answer is incorrect. Please try again!",
                     "mentor_hint": mentor_hint,
                     "user": user,
+                    "main_categories": main_categories,
+                    "selected_category": None,
                 },
             )
 
