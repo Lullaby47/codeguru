@@ -1486,6 +1486,8 @@ def admin_delete_challenge(
     user: User = Depends(get_admin),
 ):
     """Delete a challenge (admin and co-admin only)."""
+    from fastapi.responses import RedirectResponse
+    
     challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
     
     if not challenge:
@@ -1495,5 +1497,6 @@ def admin_delete_challenge(
     db.delete(challenge)
     db.commit()
     
-    return {"message": "Challenge deleted successfully", "challenge_id": challenge_id}
+    # Redirect to admin challenge list page instead of returning JSON
+    return RedirectResponse(url="/admin/challenges/list", status_code=303)
 
