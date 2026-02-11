@@ -1143,6 +1143,74 @@ def admin_demote_user(
     )
 
 
+@router.get("/admin/users/{user_id}/reset", response_class=HTMLResponse)
+def admin_reset_user_confirm(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_main_admin),
+):
+    """
+    Show reset progress confirmation page for a user.
+    User must click "Yes" to actually reset.
+    """
+    target = db.query(User).filter(User.id == user_id).first()
+    
+    if not target:
+        return RedirectResponse(
+            url="/admin/users?error=User+not+found", status_code=303
+        )
+    
+    if target.id == MAIN_ADMIN_USER_ID:
+        return RedirectResponse(
+            url="/admin/users?error=Cannot+reset+main+admin", status_code=303
+        )
+    
+    return templates.TemplateResponse(
+        "admin_user_reset_confirm.html",
+        {
+            "request": request,
+            "user": user,
+            "target_user": target,
+        },
+    )
+
+
+@router.post("/admin/users/{user_id}/reset")
+def admin_reset_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_main_admin),
+):
+    """Reset a user's progress (level, submissions, streak); main admin only."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        return RedirectResponse(
+            url="/admin/users?error=User+not+found", status_code=303
+        )
+
+    if target.id == MAIN_ADMIN_USER_ID:
+        return RedirectResponse(
+            url="/admin/users?error=Cannot+reset+main+admin", status_code=303
+        )
+    
+    # Import Submission model
+    from app.submissions.models import Submission
+    
+    # Delete all submissions for this user
+    db.query(Submission).filter(Submission.user_id == user_id).delete()
+    
+    # Reset user level and streak to starting values
+    target.level = 1
+    target.streak = 0
+    
+    db.commit()
+    
+    return RedirectResponse(
+        url=f"/admin/users?success=User+{target.username}+progress+reset+successfully", status_code=303
+    )
+
+
 @router.post("/admin/users/{user_id}/delete")
 def admin_delete_user(
     user_id: int,
