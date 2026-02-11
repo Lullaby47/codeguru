@@ -1070,7 +1070,8 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
    MODALS (Profile, Congrats)
    ============================================ */
 .profile-overlay,
-.congrats-overlay {
+.congrats-overlay,
+.logout-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -1161,6 +1162,123 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     font-size: 12px;
     color: #777;
     margin-top: 20px;
+}
+
+/* Logout Confirmation Modal */
+.logout-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+    cursor: pointer;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.logout-modal {
+    background: linear-gradient(135deg, #252526 0%, #2d2d30 100%);
+    border: 2px solid #ff4444;
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(255, 68, 68, 0.3);
+    animation: slideUp 0.4s ease;
+    cursor: default;
+    box-sizing: border-box;
+}
+
+.logout-modal h2 {
+    font-size: 24px;
+    margin: 0 0 16px 0;
+    color: #ff4444;
+}
+
+.logout-modal p {
+    font-size: 16px;
+    color: #ccc;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+}
+
+.logout-modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.logout-btn-yes,
+.logout-btn-no {
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-width: 100px;
+}
+
+.logout-btn-yes {
+    background: #ff4444;
+    color: #fff;
+    border: 1px solid #ff4444;
+}
+
+.logout-btn-yes:hover {
+    background: #ff5555;
+    border-color: #ff5555;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+}
+
+.logout-btn-no {
+    background: rgba(136, 136, 136, 0.2);
+    color: #ccc;
+    border: 1px solid rgba(136, 136, 136, 0.4);
+}
+
+.logout-btn-no:hover {
+    background: rgba(136, 136, 136, 0.3);
+    border-color: rgba(136, 136, 136, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(136, 136, 136, 0.2);
+}
+
+@media (max-width: 719px) {
+    .logout-modal {
+        padding: 24px 20px;
+        max-width: 90%;
+    }
+
+    .logout-modal h2 {
+        font-size: 20px;
+    }
+
+    .logout-modal p {
+        font-size: 14px;
+    }
+
+    .logout-modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .logout-btn-yes,
+    .logout-btn-no {
+        width: 100%;
+        padding: 14px 24px;
+    }
 }
 
 @keyframes fadeIn {
