@@ -58,8 +58,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if not u.is_main_admin %}
-                            <div class="action-buttons">
+                        <div class="action-buttons">
+                            {% if not u.is_main_admin %}
                                 {% if u.role == "coadmin" %}
                                     <form method="post" action="/admin/users/{{ u.id }}/demote">
                                         <button type="submit" class="action-btn demote">Demote</button>
@@ -69,17 +69,15 @@
                                         <button type="submit" class="action-btn promote">Promote to Co-Admin</button>
                                     </form>
                                 {% endif %}
-                                <a href="/admin/users/{{ u.id }}/reset" class="action-btn reset" style="background: rgba(255, 216, 77, 0.15); color: #ffd84d; border: 1px solid rgba(255, 216, 77, 0.3); text-decoration: none; display: inline-block;">
-                                    🔄 Reset Progress
-                                </a>
                                 <form method="post" action="/admin/users/{{ u.id }}/delete" 
                                       onsubmit="return confirm('Are you sure you want to delete this user? This will permanently delete their account and all progress. This action cannot be undone.');">
                                     <button type="submit" class="action-btn delete">Delete</button>
                                 </form>
-                            </div>
-                        {% else %}
-                            <span style="color: #666; font-size: 12px;">Main Admin (Protected)</span>
-                        {% endif %}
+                            {% endif %}
+                            <a href="/admin/users/{{ u.id }}/reset" class="action-btn reset" style="background: rgba(255, 216, 77, 0.15); color: #ffd84d; border: 1px solid rgba(255, 216, 77, 0.3); text-decoration: none; display: inline-block;">
+                                🔄 Reset Progress
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

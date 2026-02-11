@@ -1061,9 +1061,9 @@ def admin_delete_challenge_confirm(
 def admin_users_page(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_admin),
+    user: User = Depends(get_main_admin),
 ):
-    """Admin and co-admin user management page."""
+    """Main admin-only user management page."""
     users = db.query(User).order_by(User.id.asc()).all()
 
     users_data = [
@@ -1148,23 +1148,18 @@ def admin_reset_user_confirm(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_admin),
+    user: User = Depends(get_main_admin),
 ):
     """
     Show reset progress confirmation page for a user.
     User must click "Yes" to actually reset.
-    Available to admin and co-admin.
+    Main admin only - can reset any user including themselves.
     """
     target = db.query(User).filter(User.id == user_id).first()
     
     if not target:
         return RedirectResponse(
             url="/admin/users?error=User+not+found", status_code=303
-        )
-    
-    if target.id == MAIN_ADMIN_USER_ID:
-        return RedirectResponse(
-            url="/admin/users?error=Cannot+reset+main+admin", status_code=303
         )
     
     return templates.TemplateResponse(
@@ -1181,18 +1176,13 @@ def admin_reset_user_confirm(
 def admin_reset_user(
     user_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_admin),
+    user: User = Depends(get_main_admin),
 ):
-    """Reset a user's progress (level, submissions, streak); main admin only."""
+    """Reset a user's progress (level, submissions, streak); main admin only. Can reset any user including themselves."""
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         return RedirectResponse(
             url="/admin/users?error=User+not+found", status_code=303
-        )
-
-    if target.id == MAIN_ADMIN_USER_ID:
-        return RedirectResponse(
-            url="/admin/users?error=Cannot+reset+main+admin", status_code=303
         )
     
     # Import Submission model
