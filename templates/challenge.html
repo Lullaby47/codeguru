@@ -30,7 +30,24 @@
 .category-btn.active:hover {
     background: rgba(0, 255, 102, 0.25);
 }
+.category-back-btn {
+    display: inline-block;
+    margin-bottom: 12px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    color: #00ff66;
+    border: 1px solid rgba(0, 255, 102, 0.3);
+    background: rgba(0, 255, 102, 0.08);
+}
+.category-back-btn:hover {
+    background: rgba(0, 255, 102, 0.16);
+}
 </style>
+{% set active_category = selected_category if selected_category else (challenge.main_category if challenge and challenge.main_category else None) %}
+{% set show_category_selector = not active_category and not challenge %}
+{% if show_category_selector %}
 <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <h3 style="color: #00ff66; font-size: 16px; margin: 0 0 16px 0; font-weight: 600;">📚 Select Category</h3>
     {% if main_categories is defined and main_categories and main_categories|length > 0 %}
@@ -47,7 +64,10 @@
     </div>
     {% endif %}
 </div>
+{% endif %}
 
+{% if not show_category_selector %}
+<a href="/challenge" class="category-back-btn">← Back to Category Selection</a>
 <div class="challenge-main-container">
     <div class="challenge-editor-box">
         {% if challenge and challenge.id %}
@@ -213,9 +233,10 @@
     </div>
 
 </div>
+{% endif %}
 
 <!-- Attempts Box - Separate box below main content -->
-{% if challenge and challenge.id %}
+{% if not show_category_selector and challenge and challenge.id %}
 <div class="challenge-attempts-box">
     <div style="padding: 20px 0; border-bottom: 1px solid #3e3e3e; margin-bottom: 20px;">
         <h3 style="margin: 0; color: #00ff66; font-size: 18px;">Previous Attempts</h3>
