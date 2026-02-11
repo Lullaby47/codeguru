@@ -473,10 +473,9 @@ def get_next_challenge(
             ch for ch in all_challenges_before_filter
             if ch.main_category and ch.main_category.strip().lower() == category_normalized.lower()
         ]
-        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' out of {len(all_challenges_before_filter)} total", flush=True)
-        # Skip the all_challenges = q.all() line below since we already have it
-        return get_next_challenge_from_list(all_challenges, user, level, db)
-    all_challenges = q.all()
+        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' out of {len(all_challenges_before_filter)} total at level {level}", flush=True)
+    else:
+        all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
     solved_challenge_ids = (
