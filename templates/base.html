@@ -279,14 +279,24 @@
                 return; // Elements not found, exit gracefully
             }
         
-        // Function to show modal
+        // Function to show modal - Samsung Internet compatible
         function showLogoutModal() {
             console.log('Showing logout modal');
+            // Prevent body scroll first
+            const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+            document.body.classList.add("modal-open");
+            // Store scroll position for restoration (Samsung Internet)
+            if (scrollY) {
+                document.body.style.top = `-${scrollY}px`;
+            }
+            
+            // Show modal
             logoutModal.classList.add("is-open");
             logoutModal.setAttribute("aria-hidden", "false");
-            document.body.classList.add("modal-open");
-            // Force reflow to ensure styles apply
+            
+            // Force reflow to ensure styles apply (Samsung Internet)
             void logoutModal.offsetWidth;
+            
             // Focus the first button for accessibility
             setTimeout(() => {
                 try {
@@ -297,12 +307,21 @@
             }, 100);
         }
         
-        // Function to hide modal
+        // Function to hide modal - Samsung Internet compatible
         function hideLogoutModal() {
             console.log('Hiding logout modal');
             logoutModal.classList.remove("is-open");
             logoutModal.setAttribute("aria-hidden", "true");
+            
+            // Restore body scroll
+            const scrollY = document.body.style.top;
             document.body.classList.remove("modal-open");
+            document.body.style.top = '';
+            
+            // Restore scroll position (Samsung Internet)
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY.replace('-', '')) || 0);
+            }
         }
         
         // Handle logout link click/touch - Samsung Internet compatible
