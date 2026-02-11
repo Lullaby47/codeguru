@@ -1249,12 +1249,16 @@ def submit_force_challenge(
             debug_print(f"Attempt {attempt_number} (force) - no hint trigger (only on 3, 5, 7, 8, 10, or ≥ 11)")
 
     # Level progression: check if user can level up based on solved count
-    # For "Learn More" challenges (current level), users level up when solved_count >= current_level
+    # FORCE LEARNING (pool challenges) helps users level up FASTER by allowing them to solve
+    # multiple challenges at their current level. This counts ALL challenges (both daily and pool)
+    # at the current level, so solving pool challenges immediately contributes to level progression.
     level_up = False
     old_level = user.level
     if is_correct:
         current_level = user.level
         # Count distinct challenges solved correctly at user's current level
+        # This includes BOTH daily challenges (with challenge_date) AND pool challenges (challenge_date is None)
+        # This is the core function of force learning - to level users up faster by solving multiple challenges
         solved_count = (
             db.query(func.count(distinct(Submission.challenge_id)))
             .join(Challenge, Challenge.id == Submission.challenge_id)
@@ -1262,11 +1266,13 @@ def submit_force_challenge(
                 Submission.user_id == user.id,
                 Submission.is_correct == 1,
                 Challenge.level == current_level,
+                # Note: We don't filter by challenge_date here, so pool challenges count too!
             )
             .scalar()
         ) or 0
 
         # Check if user can level up: solved challenges >= current level
+        # Level up happens IMMEDIATELY when solving force learning challenges (no need to wait for tomorrow)
         if solved_count >= current_level:
             user.level = current_level + 1
             db.add(user)
