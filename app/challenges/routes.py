@@ -462,15 +462,20 @@ def get_next_challenge(
         # Debug: print the category being searched
         print(f"[DEBUG] Searching for category: '{category_normalized}' (normalized: '{category_normalized.lower()}')", flush=True)
         # Filter by case-insensitive comparison, ensuring main_category is not NULL or empty
-        # Use func.trim to handle any leading/trailing whitespace in database
+        # First get all challenges, then filter in Python to handle any whitespace issues
         q = q.filter(
             Challenge.main_category.isnot(None),
             Challenge.main_category != "",
-            func.lower(func.trim(Challenge.main_category)) == category_normalized.lower()
         )
-        # Debug: count matching challenges
-        matching_count = q.count()
-        print(f"[DEBUG] Found {matching_count} challenges matching category '{category_normalized}'", flush=True)
+        all_challenges_before_filter = q.all()
+        # Filter in Python to handle exact case-insensitive match with trimmed values
+        all_challenges = [
+            ch for ch in all_challenges_before_filter
+            if ch.main_category and ch.main_category.strip().lower() == category_normalized.lower()
+        ]
+        print(f"[DEBUG] Found {len(all_challenges)} challenges matching category '{category_normalized}' out of {len(all_challenges_before_filter)} total", flush=True)
+        # Skip the all_challenges = q.all() line below since we already have it
+        return get_next_challenge_from_list(all_challenges, user, level, db)
     all_challenges = q.all()
 
     # Per-user: only exclude challenges THIS user has solved (correct submission).
