@@ -665,6 +665,26 @@ def get_next_challenge(
         print(f"[API DEBUG] ✓ Selected challenge {selected_challenge.id} (fallback)", flush=True)
         print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (SUCCESS) =====", flush=True)
         return {"challenge_id": selected_challenge.id}
+
+    # Category flow fallback: if everything in the selected category is solved,
+    # still return one category challenge instead of blank screen.
+    if main_category and main_category.strip():
+        if all_challenges:
+            fallback_challenge = random.choice(all_challenges)
+            print(
+                f"[API DEBUG] Category fallback: all challenges solved, returning challenge {fallback_challenge.id} for review/practice",
+                flush=True,
+            )
+            print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (CATEGORY FALLBACK) =====", flush=True)
+            return {"challenge_id": fallback_challenge.id}
+        if "category_matched" in locals() and category_matched:
+            fallback_challenge = random.choice(category_matched)
+            print(
+                f"[API DEBUG] Category fallback (outside level window): returning challenge {fallback_challenge.id}",
+                flush=True,
+            )
+            print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (CATEGORY OUT-OF-RANGE FALLBACK) =====", flush=True)
+            return {"challenge_id": fallback_challenge.id}
     
     print(f"[API DEBUG] ❌ No unsolved challenges available", flush=True)
     print(f"[API DEBUG] ===== GET_NEXT_CHALLENGE END (NO CHALLENGES) =====", flush=True)
