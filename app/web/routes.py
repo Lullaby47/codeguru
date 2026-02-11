@@ -266,16 +266,18 @@ def dashboard(
             "You should level up soon!"
         )
 
-    category_levels = get_all_user_category_levels_as_list(db, user.id)
+    from app.auth.category_level import build_ui_progress_context
+    ui_ctx = build_ui_progress_context(db, user.id)
     return templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
             "username": user.username,
-            "category_levels": category_levels,
+            "category_levels": ui_ctx["category_levels"],
+            "next_goal": ui_ctx["next_goal"],
             "streak": user.streak,
             "verified": user.is_verified,
-            "user": user,  # Pass user object for profile
+            "user": user,
             "error_message": error_message,
         },
     )
@@ -347,6 +349,7 @@ def daily_challenge(
     challenge = None
     no_questions_message = ""
     selection_reason = None
+    ui_ctx = None
     
     # Only show challenge if challenge_id is provided OR main_category is selected
     # Don't show challenge by default - user must select a category first
@@ -410,22 +413,15 @@ def daily_challenge(
             )
             challenge_already_solved = solved is not None
 
-            # Calculate progress using stored counter (Rule C)
-            challenge_category = challenge.get("main_category") if challenge else None
-            if challenge_category and challenge_category.strip():
-                from app.auth.category_level import get_or_create_progress
-                _prog = get_or_create_progress(db, user.id, challenge_category.strip())
-                current_level = _prog.level
-                solved_count = _prog.solved_current_level_count
+            # Build UI progress context (F1/F5/F6)
+            from app.auth.category_level import build_ui_progress_context
+            _cat = (challenge.get("main_category") or main_category or "").strip() or None
+            ui_ctx = build_ui_progress_context(db, user.id, _cat)
+            _cur = ui_ctx.get("current")
+            if _cur:
+                progress_info = {"solved": _cur["solved"], "required": _cur["required"], "level": _cur["level"]}
             else:
-                current_level = 1
-                solved_count = 0
-            required_count = current_level
-            progress_info = {
-                "solved": solved_count,
-                "required": required_count,
-                "level": current_level,
-            }
+                progress_info = None
 
             # If in edit mode, get the latest correct submission for this challenge to pre-fill
             if edit:
@@ -457,6 +453,12 @@ def daily_challenge(
     # Determine if this is a category-selected challenge
     is_category_challenge = main_category is not None and challenge_id is None
     
+    # Ensure ui_ctx exists even when no challenge was loaded
+    if not ui_ctx:
+        from app.auth.category_level import build_ui_progress_context
+        _cat = (main_category or "").strip() or None
+        ui_ctx = build_ui_progress_context(db, user.id, _cat)
+
     return templates.TemplateResponse(
         "challenge.html",
         {
@@ -466,6 +468,7 @@ def daily_challenge(
             "challenge_already_solved": challenge_already_solved if is_pool_challenge else False,
             "is_pool_challenge": is_pool_challenge or is_category_challenge,
             "progress_info": progress_info,
+            "ui_ctx": ui_ctx,
             "previous_code": previous_code,
             "edit_mode": bool(edit),
             "error_message": error_message,
@@ -535,6 +538,9 @@ def submit_challenge_ui(
                 "Error submitting challenge. Please try again." if not challenge 
                 else "Your answer is incorrect. Please try again!"
             )
+            _cat_e = challenge.get("main_category") if challenge else None
+            from app.auth.category_level import build_ui_progress_context
+            _ui_ctx_e = build_ui_progress_context(db, user.id, _cat_e)
             return templates.TemplateResponse(
                 "challenge.html",
                 {
@@ -545,8 +551,9 @@ def submit_challenge_ui(
                     "edit_mode": True,
                     "error_message": error_msg,
                     "user": user,
+                    "ui_ctx": _ui_ctx_e,
                     "main_categories": main_cats,
-                    "selected_category": challenge.get("main_category") if challenge else None,
+                    "selected_category": _cat_e,
                 },
             )
 
@@ -565,10 +572,17 @@ def submit_challenge_ui(
             print(f"[WEB ROUTE DEBUG] No mentor hint in response", flush=True)
 
         if is_correct:
-            # If user leveled up, add level up info to URL
             if level_up:
+                _cat_param = ""
+                # Get category from challenge for the toast
+                try:
+                    _ch = requests.get(f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies)
+                    if _ch.status_code == 200:
+                        _cat_param = f"&category={_ch.json().get('main_category', '')}"
+                except Exception:
+                    pass
                 return RedirectResponse(
-                    url=f"/submission/{submission_id}/view?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}",
+                    url=f"/submission/{submission_id}/view?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}{_cat_param}",
                     status_code=303,
                 )
             return RedirectResponse(url=f"/submission/{submission_id}/view?fresh=true", status_code=303)
@@ -587,6 +601,10 @@ def submit_challenge_ui(
                 .all()
                 if row[0] and str(row[0]).strip()
             ]
+            # Build ui_ctx for the re-rendered page
+            _cat = challenge.get("main_category") if challenge else None
+            from app.auth.category_level import build_ui_progress_context
+            _ui_ctx = build_ui_progress_context(db, user.id, _cat)
             return templates.TemplateResponse(
                 "challenge.html",
                 {
@@ -596,10 +614,13 @@ def submit_challenge_ui(
                     "previous_code": code,
                     "edit_mode": True,
                     "error_message": "Your answer is incorrect. Please try again!",
+                    "expected_output": result.get("expected_output", ""),
+                    "actual_output": result.get("actual_output", ""),
                     "mentor_hint": mentor_hint,
                     "user": user,
+                    "ui_ctx": _ui_ctx,
                     "main_categories": main_cats,
-                    "selected_category": challenge.get("main_category") if challenge else None,
+                    "selected_category": _cat,
                 },
             )
     else:
@@ -628,11 +649,11 @@ def submit_challenge_ui(
 
         if is_correct:  # If the answer is correct, go to progress page
             if level_up:
-                response = RedirectResponse(
-                    url=f"/progress/{submission_id}?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}",
+                _cat_q = f"&category={result.get('category', '')}" if result.get('category') else ""
+                return RedirectResponse(
+                    url=f"/progress/{submission_id}?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}{_cat_q}",
                     status_code=303,
                 )
-                return response
             return RedirectResponse(url=f"/progress/{submission_id}?fresh=true", status_code=303)
         else:
             challenge_r = requests.get(f"{_api_base(request)}/challenge/today", cookies=request.cookies)
@@ -662,6 +683,10 @@ def submit_challenge_ui(
             )
             main_categories = [cat[0] for cat in main_categories if cat[0]]
             
+            # Build ui_ctx for wrong answer page
+            from app.auth.category_level import build_ui_progress_context
+            _cat_d = challenge.get("main_category") if challenge else None
+            _ui_ctx_d = build_ui_progress_context(db, user.id, _cat_d)
             return templates.TemplateResponse(
                 "challenge.html",
                 {
@@ -671,10 +696,13 @@ def submit_challenge_ui(
                     "previous_code": previous_code,
                     "edit_mode": True,
                     "error_message": "Your answer is incorrect. Please try again!",
+                    "expected_output": result.get("expected_output", ""),
+                    "actual_output": result.get("actual_output", ""),
                     "mentor_hint": mentor_hint,
                     "user": user,
+                    "ui_ctx": _ui_ctx_d,
                     "main_categories": main_categories,
-                    "selected_category": None,
+                    "selected_category": _cat_d,
                 },
             )
 

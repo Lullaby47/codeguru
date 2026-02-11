@@ -1108,6 +1108,7 @@ def submit_challenge(
         is_first_submission=1 if first_time_global else 0,
         attempt_number=attempt_number,
         is_retry=is_retry,
+        actual_output=output[:5000] if output else None,
     )
 
     db.add(submission)
@@ -1198,6 +1199,8 @@ def submit_challenge(
         "old_level": old_level if old_level is not None else user.level,  # Previous level before this submission
         "category": category_for_level,  # Category that leveled up (if any)
         "mentor_hint": mentor_hint,  # Mentor hint if triggered (None otherwise)
+        "expected_output": challenge.expected_output or "",
+        "actual_output": output[:5000] if output else "",
     }
 
 # ======================================================
@@ -1303,6 +1306,7 @@ def submit_force_challenge(
         is_first_submission=1 if first_time_global else 0,
         attempt_number=attempt_number,
         is_retry=is_retry,
+        actual_output=output[:5000] if output else None,
     )
 
     db.add(submission)
@@ -1387,6 +1391,8 @@ def submit_force_challenge(
         "level_up": level_up,
         "old_level": resp_old,
         "mentor_hint": mentor_hint,
+        "expected_output": challenge.expected_output or "",
+        "actual_output": output[:5000] if output else "",
     }
 
 # ======================================================

@@ -9,6 +9,7 @@ from app.web.debug_routes import router as debug_router
 from app.db.base import Base, engine
 from app.auth.models import User
 from app.auth.category_progress import UserCategoryProgress, DailyAssignment  # Import for table creation
+from app.submissions.models import UserAchievement  # Import so create_all picks it up
 
 from app.auth.routes import router as auth_router
 from app.web.routes import router as web_router
@@ -47,6 +48,18 @@ try:
             _conn.commit()
 except Exception as e:
     print("[DB] user_category_progress migration:", repr(e), flush=True)
+
+# Ensure submissions.actual_output exists (F2 wrong-answer feedback)
+try:
+    if "submissions" in _inspector.get_table_names():
+        _sub_cols = [c["name"] for c in _inspector.get_columns("submissions")]
+        if "actual_output" not in _sub_cols:
+            with engine.connect() as _conn:
+                _conn.execute(_text("ALTER TABLE submissions ADD COLUMN actual_output TEXT"))
+                _conn.commit()
+            print("[DB] Added submissions.actual_output", flush=True)
+except Exception as e:
+    print("[DB] submissions migration:", repr(e), flush=True)
 
 # Ensure challenges.is_active exists (per-user pool: never remove questions on solve; filter by is_active only)
 try:

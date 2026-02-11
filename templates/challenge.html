@@ -94,6 +94,23 @@
             </div>
             {% endif %}
 
+            {% if challenge.level and challenge.level >= 3 %}
+            {% set tips = {
+                3: "Tip: You'll use loops and conditions more often now. Think step by step.",
+                4: "Tip: Functions help you organize code. Try breaking the problem into smaller parts.",
+                5: "Tip: Data structures like lists and dicts are your friends at this level.",
+                6: "Tip: Think about edge cases — empty inputs, large numbers, special characters.",
+                7: "Tip: Efficiency matters more now. Consider how your code scales.",
+                8: "Tip: Read the problem twice before writing code. Plan first, code second.",
+                9: "Tip: Review your solution for readability. Clean code is correct code.",
+                10: "Tip: At this level, debugging skills are as important as coding skills."
+            } %}
+            {% set tip_text = tips.get(challenge.level, "Tip: Advanced challenges require patience. Break the problem down.") %}
+            <div style="background: rgba(0,255,102,0.05); border: 1px solid rgba(0,255,102,0.15); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: #88cc88;">
+                💡 {{ tip_text }}
+            </div>
+            {% endif %}
+
             <h2 style="word-wrap: break-word;">{{ challenge.title }}</h2>
             <p style="word-wrap: break-word; line-height: 1.6;">{{ challenge.description }}</p>
 
@@ -108,14 +125,36 @@
             </div>
             {% endif %}
 
-            {% if progress_info %}
+            {% if ui_ctx and ui_ctx.current %}
+            {% set cur = ui_ctx.current %}
+            <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 10px; padding: 14px 16px; margin-top: 20px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="color: #00ff66; font-weight: 600; font-size: 13px;">Level {{ cur.level }}</span>
+                    <span style="font-size: 12px; color: #888;">{{ cur.solved }}/{{ cur.required }} to level up</span>
+                </div>
+                <!-- Progress bar (F1) -->
+                {% set pct = ((cur.solved / cur.required) * 100) if cur.required > 0 else 0 %}
+                <div style="background: #1a1a1a; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #2a2a2a;">
+                    <div style="height: 100%; width: {{ pct|int }}%; background: linear-gradient(90deg, #00ff66, #00cc55); border-radius: 6px; transition: width 0.3s;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px;">
+                    <!-- Fast Track badge (F5) -->
+                    {% if cur.fast_track %}
+                    <span style="color: #ffd84d;">🚀 Fast Track ON</span>
+                    {% else %}
+                    <!-- Daily limit indicator (F6) -->
+                    <span style="color: #888;">Daily: {{ cur.daily_used }}/{{ cur.daily_cap }} used today</span>
+                    {% endif %}
+                    {% if cur.remaining > 0 %}
+                    <span style="color: #666;">{{ cur.remaining }} more to go</span>
+                    {% else %}
+                    <span style="color: #00ff66;">Ready to level up!</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% elif progress_info %}
             <div class="alert alert-success" style="margin-top: 20px; margin-bottom: 20px;">
-                📊 Level {{ progress_info.level }} Progress: {{ progress_info.solved }}/{{ progress_info.required }} challenges solved
-                {% if progress_info.solved < progress_info.required %}
-                    <br><small style="color: #888;">Solve {{ progress_info.required - progress_info.solved }} more to level up!</small>
-                {% else %}
-                    <br><small style="color: #00ff66;">Ready to level up! 🚀</small>
-                {% endif %}
+                📊 Level {{ progress_info.level }} Progress: {{ progress_info.solved }}/{{ progress_info.required }} solved
             </div>
             {% endif %}
 
@@ -194,6 +233,19 @@
                 <div class="alert alert-error" style="margin-top: 20px;">
                     ❌ {{ error_message }}
                 </div>
+                {% if expected_output is defined and expected_output %}
+                <div style="margin-top: 12px; background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 8px; padding: 14px;">
+                    <div style="font-size: 11px; color: #00ff66; text-transform: uppercase; margin-bottom: 6px; font-weight: 600;">Expected Output</div>
+                    <pre style="background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 10px; color: #00ff66; font-size: 12px; white-space: pre-wrap; margin: 0;">{{ expected_output }}</pre>
+                    {% if actual_output is defined and actual_output %}
+                    <div style="font-size: 11px; color: #ff4444; text-transform: uppercase; margin-top: 10px; margin-bottom: 6px; font-weight: 600;">Your Output</div>
+                    <pre style="background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 10px; color: #ff8888; font-size: 12px; white-space: pre-wrap; margin: 0;">{{ actual_output }}</pre>
+                    {% endif %}
+                    <div style="margin-top: 10px; font-size: 11px; color: #888; border-top: 1px solid #1f1f1f; padding-top: 8px;">
+                        💡 Tip: Check spelling, capitalization, and extra spaces.
+                    </div>
+                </div>
+                {% endif %}
             {% endif %}
 
             {% if output is defined %}

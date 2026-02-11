@@ -145,9 +145,22 @@ def record_solve_and_maybe_level_up(
         db.commit()
         db.refresh(progress)
         print(f"[LEVEL-UP] user={user_id} cat='{main_category}' {old_level} -> {progress.level}", flush=True)
+        # F8: check achievements
+        try:
+            from app.auth.achievements import check_first_solve, check_level_5
+            check_first_solve(db, user_id)
+            check_level_5(db, user_id, progress.level)
+        except Exception:
+            pass
         return True, old_level, progress.level
 
     db.commit()
+    # F8: first solve achievement
+    try:
+        from app.auth.achievements import check_first_solve
+        check_first_solve(db, user_id)
+    except Exception:
+        pass
     return False, old_level, old_level
 
 
@@ -166,6 +179,12 @@ def enable_fast_track(db: Session, user_id: int, main_category: str) -> UserCate
     db.commit()
     db.refresh(progress)
     print(f"[FAST-TRACK] enabled user={user_id} cat='{main_category}'", flush=True)
+    # F8: award fast track achievement
+    try:
+        from app.auth.achievements import check_fast_track
+        check_fast_track(db, user_id)
+    except Exception:
+        pass
     return progress
 
 
@@ -365,10 +384,16 @@ def get_all_user_category_levels(db: Session, user_id: int) -> dict[str, int]:
 def get_all_user_category_levels_as_list(
     db: Session, user_id: int, include_all_categories: bool = True
 ) -> list[dict]:
+    """Returns list of dicts with level + progress bar data per category."""
     from app.challenges.models import Challenge
     from sqlalchemy import distinct as _distinct, or_
 
-    user_levels = get_all_user_category_levels(db, user_id)
+    # Fetch all progress records for this user
+    all_progress = {
+        r.main_category: r
+        for r in db.query(UserCategoryProgress)
+        .filter(UserCategoryProgress.user_id == user_id).all()
+    }
 
     if include_all_categories:
         all_cats = (
@@ -382,8 +407,75 @@ def get_all_user_category_levels_as_list(
             .all()
         )
         names = [c[0].strip() for c in all_cats if c[0] and c[0].strip()]
-        return [{"main_category": n, "level": user_levels.get(n, 1)} for n in names]
     else:
-        result = [{"main_category": c, "level": l} for c, l in user_levels.items()]
-        result.sort(key=lambda x: x["main_category"])
-        return result
+        names = sorted(all_progress.keys())
+
+    result = []
+    for n in names:
+        prog = all_progress.get(n)
+        lvl = prog.level if prog else 1
+        solved = prog.solved_current_level_count if prog else 0
+        ft = bool(prog.fast_track_enabled) if prog else False
+        result.append({
+            "main_category": n,
+            "level": lvl,
+            "solved": solved,
+            "required": lvl,          # need lvl solves to advance
+            "remaining": max(0, lvl - solved),
+            "fast_track": ft,
+        })
+    return result
+
+
+# ---------------------------------------------------------------------------
+# UI PROGRESS CONTEXT  (single entry point for templates)
+# ---------------------------------------------------------------------------
+
+def build_ui_progress_context(
+    db: Session, user_id: int, main_category: str | None = None,
+) -> dict:
+    """
+    One-call helper returning everything the UI needs for progress display.
+    Returns:
+      category_levels: list[dict]  – all categories with level/solved/required/fast_track
+      current: dict|None           – detail for selected category (level, solved, required, ft, daily_used)
+      next_goal: dict|None         – category closest to leveling up
+    """
+    cat_levels = get_all_user_category_levels_as_list(db, user_id)
+
+    current = None
+    if main_category and main_category.strip():
+        cat = main_category.strip()
+        prog = get_or_create_progress(db, user_id, cat)
+        today = date.today()
+        daily_assigned = get_daily_assignments(db, user_id, cat, today)
+        daily_solved = count_daily_solved(db, user_id, cat, today)
+        current = {
+            "main_category": cat,
+            "level": prog.level,
+            "solved": prog.solved_current_level_count,
+            "required": prog.level,
+            "remaining": max(0, prog.level - prog.solved_current_level_count),
+            "fast_track": bool(prog.fast_track_enabled),
+            "daily_used": len(daily_assigned),
+            "daily_solved": daily_solved,
+            "daily_cap": _DAILY_CAP,
+        }
+
+    # Next goal: category with smallest remaining > 0
+    next_goal = None
+    candidates = [c for c in cat_levels if c["remaining"] > 0]
+    if candidates:
+        best = min(candidates, key=lambda c: c["remaining"])
+        next_goal = {
+            "main_category": best["main_category"],
+            "level": best["level"],
+            "remaining": best["remaining"],
+            "next_level": best["level"] + 1,
+        }
+
+    return {
+        "category_levels": cat_levels,
+        "current": current,
+        "next_goal": next_goal,
+    }

@@ -26,14 +26,24 @@
                     <div class="dashboard-card-label">CATEGORY LEVELS</div>
                     <div class="dashboard-levels-container">
                         {% if category_levels and category_levels|length > 0 %}
-                            {% for item in category_levels[:3] %}
-                            <div class="dashboard-level-item">
-                                <span class="dashboard-level-category">{{ item.main_category }}</span>
-                                <span class="dashboard-level-value">Level {{ item.level }}</span>
+                            {% for item in category_levels[:4] %}
+                            <div class="dashboard-level-item" style="margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="dashboard-level-category">{{ item.main_category }}</span>
+                                    <span style="font-size: 11px;">
+                                        {% if item.fast_track %}<span style="color: #ffd84d;" title="Fast Track">🚀</span> {% endif %}
+                                        <span class="dashboard-level-value">Level {{ item.level }}</span>
+                                    </span>
+                                </div>
+                                {% set pct = ((item.solved / item.required) * 100) if item.required > 0 else 0 %}
+                                <div style="background: #1a1a1a; border-radius: 4px; height: 6px; margin-top: 4px; overflow: hidden;">
+                                    <div style="height: 100%; width: {{ pct|int }}%; background: #00ff66; border-radius: 4px;"></div>
+                                </div>
+                                <div style="font-size: 10px; color: #666; margin-top: 2px;">{{ item.solved }}/{{ item.required }} to next level</div>
                             </div>
                             {% endfor %}
-                            {% if category_levels|length > 3 %}
-                            <div class="dashboard-level-viewall"><a href="/challenge">View all</a></div>
+                            {% if category_levels|length > 4 %}
+                            <div class="dashboard-level-viewall"><a href="/challenge">View all {{ category_levels|length }} categories</a></div>
                             {% endif %}
                         {% else %}
                             <div class="dashboard-level-empty">No categories yet</div>
@@ -53,6 +63,17 @@
                     </div>
                 </div>
             </div>
+
+            {% if next_goal %}
+            <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px;">
+                <div style="font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 6px; font-weight: 600;">Next Goal</div>
+                <div style="color: #ccc; font-size: 14px;">
+                    Solve <span style="color: #00ff66; font-weight: bold;">{{ next_goal.remaining }}</span> more in
+                    <span style="color: #00ff66;">{{ next_goal.main_category }}</span>
+                    to reach <span style="color: #ffd84d;">Level {{ next_goal.next_level }}</span>
+                </div>
+            </div>
+            {% endif %}
 
             <a href="/challenge" class="dashboard-cta">
                 ⚔️ Enter Today's Challenge

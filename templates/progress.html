@@ -296,14 +296,7 @@ ul li:before {
 }
 </style>
 
-{% if show_celebration %}
-<div class="celebration show" onclick="this.remove()">
-    <div class="celebration-box">
-        <h1>🎉 Congratulations!</h1>
-        <p>You leveled up from Level {{ old_level }} to Level {{ new_level }}{% if submission.challenge.main_category %} in {{ submission.challenge.main_category }}{% endif %}!</p>
-    </div>
-</div>
-{% elif fresh and submission.is_correct %}
+{% if fresh and submission.is_correct %}
 <div class="celebration show" onclick="this.remove()">
     <div class="celebration-box">
         <h1>✅ Correct!</h1>
@@ -311,6 +304,7 @@ ul li:before {
     </div>
 </div>
 {% endif %}
+{# Level-up is now handled by the toast in base.html via URL params #}
 
 <div class="progress-container">
 

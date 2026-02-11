@@ -206,6 +206,12 @@
                         <div class="profile-stat-value" style="font-size: 18px; margin-top: 10px;">Active</div>
                     </div>
                 </div>
+                <div class="profile-stat profile-stat-achievements" style="margin-top: 12px;">
+                    <div class="profile-stat-label">Achievements</div>
+                    <div class="profile-achievements-container" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+                        <div class="profile-levels-loading">Loading...</div>
+                    </div>
+                </div>
                 <div class="profile-hint">Click anywhere to close</div>
             </div>
         `;
@@ -222,12 +228,38 @@
                 if (levels.length === 0) {
                     container.innerHTML = '<div class="profile-level-empty">No categories yet</div>';
                 } else {
-                    container.innerHTML = levels.map(item =>
-                        `<div class="profile-level-item">
-                            <span class="profile-level-category">${item.main_category}</span>
-                            <span class="profile-level-value">Level ${item.level}</span>
-                        </div>`
-                    ).join("");
+                    container.innerHTML = levels.map(item => {
+                        const pct = item.required > 0 ? Math.round((item.solved / item.required) * 100) : 0;
+                        const ftBadge = item.fast_track ? '<span style="color:#ffd84d;font-size:11px;" title="Fast Track">🚀</span> ' : '';
+                        return `<div class="profile-level-item" style="margin-bottom:8px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span class="profile-level-category">${item.main_category}</span>
+                                <span class="profile-level-value">${ftBadge}Level ${item.level}</span>
+                            </div>
+                            <div style="background:#1a1a1a;border-radius:4px;height:5px;margin-top:3px;overflow:hidden;">
+                                <div style="height:100%;width:${pct}%;background:#00ff66;border-radius:4px;"></div>
+                            </div>
+                            <div style="font-size:10px;color:#666;margin-top:2px;">${item.solved}/${item.required} to next level</div>
+                        </div>`;
+                    }).join("");
+                }
+            })
+                // F8: Render achievements
+                const achContainer = overlay.querySelector(".profile-achievements-container");
+                if (achContainer && data.achievements) {
+                    const achs = data.achievements;
+                    if (achs.length === 0) {
+                        achContainer.innerHTML = '<div style="color:#666;font-size:12px;">No achievements yet</div>';
+                    } else {
+                        achContainer.innerHTML = achs.map(a => {
+                            const opacity = a.earned ? '1' : '0.3';
+                            const border = a.earned ? '#00ff66' : '#333';
+                            return `<div style="opacity:${opacity};background:#0f0f0f;border:1px solid ${border};border-radius:8px;padding:8px 10px;text-align:center;min-width:70px;" title="${a.desc}">
+                                <div style="font-size:20px;">${a.icon}</div>
+                                <div style="font-size:10px;color:#ccc;margin-top:2px;">${a.label}</div>
+                            </div>`;
+                        }).join("");
+                    }
                 }
             })
             .catch(() => {
@@ -242,43 +274,27 @@
         });
     }
 
-    // Check for level up from URL parameter or session storage
-    function showCongratulations(newLevel, oldLevel) {
-        const overlay = document.createElement("div");
-        overlay.className = "congrats-overlay";
-        overlay.innerHTML = `
-            <div class="congrats-modal" onclick="event.stopPropagation()">
-                <h1>🎉 Congratulations!</h1>
-                <p>You've been promoted!</p>
-                <div class="congrats-level">Level ${oldLevel} → ${newLevel}</div>
-                <p>Keep up the great work!</p>
-                <div class="congrats-hint">Click anywhere to continue</div>
-            </div>
-        `;
-        
-        document.body.appendChild(overlay);
-        
-        // Dismiss on click anywhere
-        overlay.addEventListener("click", function() {
-            overlay.style.animation = "fadeOut 0.3s ease";
-            setTimeout(() => overlay.remove(), 300);
-            // Remove from session storage
-            sessionStorage.removeItem("levelUp");
-        });
+    // Level-up toast (F4) — non-intrusive banner
+    function showLevelUpToast(newLevel, oldLevel, category) {
+        const toast = document.createElement("div");
+        const catLabel = category ? ` ${category}` : '';
+        toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#0a0a0a;border:1px solid #00ff66;border-radius:10px;padding:14px 24px;color:#fff;font-size:14px;box-shadow:0 0 20px rgba(0,255,102,0.3);animation:fadeIn .3s ease-out;display:flex;align-items:center;gap:10px;cursor:pointer;max-width:90vw;";
+        toast.innerHTML = `<span style="font-size:22px;">🎉</span><span>Level Up!<strong style="color:#00ff66;">${catLabel}</strong> is now <strong style="color:#ffd84d;">Level ${newLevel}</strong></span>`;
+        document.body.appendChild(toast);
+        toast.addEventListener("click", () => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); });
+        setTimeout(() => { if (toast.parentNode) { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); } }, 5000);
     }
 
     // Check URL parameters for level up
-    const urlParams = new URLSearchParams(window.location.search);
-    const levelUp = urlParams.get("level_up") === "true";
-    const newLevel = urlParams.get("new_level");
-    const oldLevel = urlParams.get("old_level");
-    
-    if (levelUp && newLevel && oldLevel) {
-        showCongratulations(parseInt(newLevel), parseInt(oldLevel));
-        // Clean URL
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-    }
+    (function() {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get("level_up") === "true" && p.get("new_level")) {
+            showLevelUpToast(p.get("new_level"), p.get("old_level") || "?", p.get("category") || "");
+            // Clean URL without reload
+            const clean = window.location.pathname;
+            window.history.replaceState({}, document.title, clean);
+        }
+    })();
 
     // Logout now uses server-rendered confirmation page (/logout)
     // No JavaScript modal needed - works on all browsers including Samsung Internet
