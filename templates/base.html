@@ -126,6 +126,18 @@
     {% block content %}{% endblock %}
 </div>
 
+<!-- Logout Confirmation Modal (static, always present but hidden) -->
+<div id="logoutModal" class="logout-overlay" aria-hidden="true">
+    <div class="logout-modal" role="dialog" aria-labelledby="logoutModalTitle" aria-modal="true">
+        <h2 id="logoutModalTitle">Log Out</h2>
+        <p>Are you sure you want to log out?</p>
+        <div class="logout-modal-buttons">
+            <button type="button" class="logout-btn-yes" id="logoutBtnYes">Yes</button>
+            <button type="button" class="logout-btn-no" id="logoutBtnNo">No</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const quotes = [
         "Small progress is still progress.",
@@ -259,70 +271,87 @@
     }
 
     // Logout Confirmation Modal
-    // Handle both click and touch events for mobile compatibility
-    const logoutLink = document.querySelector(".logout-link");
-    if (logoutLink) {
-        // Prevent default link behavior
-        const handleLogout = function(e) {
+    // Use static modal in HTML, show/hide with class
+    (function() {
+        const logoutLink = document.querySelector(".logout-link");
+        const logoutModal = document.getElementById("logoutModal");
+        const logoutBtnYes = document.getElementById("logoutBtnYes");
+        const logoutBtnNo = document.getElementById("logoutBtnNo");
+        
+        if (!logoutLink || !logoutModal || !logoutBtnYes || !logoutBtnNo) {
+            return; // Elements not found, exit gracefully
+        }
+        
+        // Function to show modal
+        function showLogoutModal() {
+            logoutModal.classList.add("is-open");
+            logoutModal.setAttribute("aria-hidden", "false");
+            document.body.classList.add("modal-open");
+            // Focus the first button for accessibility
+            setTimeout(() => logoutBtnNo.focus(), 100);
+        }
+        
+        // Function to hide modal
+        function hideLogoutModal() {
+            logoutModal.classList.remove("is-open");
+            logoutModal.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("modal-open");
+        }
+        
+        // Handle logout link click/touch
+        function handleLogoutClick(e) {
             e.preventDefault();
             e.stopPropagation();
-            showLogoutConfirmation();
-        };
+            showLogoutModal();
+        }
         
-        // Add both click and touchstart events for mobile
-        logoutLink.addEventListener("click", handleLogout);
+        // Attach event listeners
+        logoutLink.addEventListener("click", handleLogoutClick);
         logoutLink.addEventListener("touchend", function(e) {
             e.preventDefault();
-            handleLogout(e);
+            handleLogoutClick(e);
         });
-    }
-
-    function showLogoutConfirmation() {
-        // Prevent body scroll when modal is open
-        const originalOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
         
-        const overlay = document.createElement("div");
-        overlay.className = "logout-overlay";
-        overlay.innerHTML = `
-            <div class="logout-modal" onclick="event.stopPropagation()">
-                <h2>Log Out</h2>
-                <p>Are you sure you want to log out?</p>
-                <div class="logout-modal-buttons">
-                    <button class="logout-btn-yes" onclick="window.location.href='/logout'">Yes</button>
-                    <button class="logout-btn-no" onclick="closeLogoutModal()">No</button>
-                </div>
-            </div>
-        `;
+        // Yes button - proceed to logout
+        logoutBtnYes.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = "/logout";
+        });
         
-        document.body.appendChild(overlay);
+        logoutBtnYes.addEventListener("touchend", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = "/logout";
+        });
         
-        // Function to close modal and restore body scroll
-        window.closeLogoutModal = function() {
-            overlay.style.animation = "fadeOut 0.3s ease";
-            setTimeout(() => {
-                overlay.remove();
-                document.body.style.overflow = originalOverflow;
-                delete window.closeLogoutModal;
-            }, 300);
-        };
+        // No button - close modal
+        logoutBtnNo.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideLogoutModal();
+        });
         
-        // Dismiss on click outside
-        overlay.addEventListener("click", function(e) {
-            if (e.target === overlay) {
-                window.closeLogoutModal();
+        logoutBtnNo.addEventListener("touchend", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideLogoutModal();
+        });
+        
+        // Close on overlay click (outside modal)
+        logoutModal.addEventListener("click", function(e) {
+            if (e.target === logoutModal) {
+                hideLogoutModal();
             }
         });
-
+        
         // Close on Escape key
-        const handleEscape = function(e) {
-            if (e.key === "Escape") {
-                window.closeLogoutModal();
-                document.removeEventListener("keydown", handleEscape);
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape" && logoutModal.classList.contains("is-open")) {
+                hideLogoutModal();
             }
-        };
-        document.addEventListener("keydown", handleEscape);
-    }
+        });
+    })();
 </script>
 
 </body>
