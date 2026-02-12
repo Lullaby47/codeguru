@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>{% block title %}CodeGuru{% endblock %}</title>
+    
+    {# Apply saved theme IMMEDIATELY before any rendering #}
+    <script>
+    (() => {
+        try {
+            const saved = localStorage.getItem("codeguru_theme") || "dark";
+            document.documentElement.dataset.theme = saved;
+            document.addEventListener("DOMContentLoaded", () => {
+                document.body.dataset.theme = saved;
+            });
+        } catch (e) {
+            console.error("[THEME] Failed to load saved theme:", e);
+        }
+    })();
+    </script>
+    
     <link rel="stylesheet" href="/static/styles.css">
 
     {# Get base URL for Open Graph - prefer PUBLIC_BASE_URL (Railway public domain) over request.base_url (internal) #}
@@ -126,11 +142,26 @@
 </div>
 
 <script>
-    // Apply saved theme immediately (before any content renders)
-    (function() {
-        const savedTheme = localStorage.getItem("codeguru_theme") || "dark";
-        document.body.dataset.theme = savedTheme;
-    })();
+    // Theme helper functions (defined early for use in event handlers)
+    function applyTheme(theme) {
+        // Update data attribute on both html and body for maximum compatibility
+        document.documentElement.dataset.theme = theme;
+        document.body.dataset.theme = theme;
+        
+        // Save to localStorage
+        localStorage.setItem("codeguru_theme", theme);
+        
+        // Update active state on all theme buttons
+        updateActiveThemeButtons(theme);
+        
+        console.log("[THEME] set", theme);
+    }
+
+    function updateActiveThemeButtons(theme) {
+        document.querySelectorAll(".theme-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.theme === theme);
+        });
+    }
 
     const quotes = [
         "Small progress is still progress.",
@@ -195,8 +226,8 @@
                 <div class="profile-row">
                     <div class="profile-row-label">Theme</div>
                     <div class="theme-toggle" role="group">
-                        <button class="theme-btn" data-theme="dark">🌙 Dark</button>
-                        <button class="theme-btn" data-theme="light">☀️ Light</button>
+                        <button type="button" class="theme-btn" data-theme="dark">🌙 Dark</button>
+                        <button type="button" class="theme-btn" data-theme="light">☀️ Light</button>
                     </div>
                 </div>
                 <div class="profile-stats">
@@ -231,14 +262,9 @@
         
         document.body.appendChild(overlay);
         
-        // Set active theme button
-        const currentTheme = document.body.dataset.theme || "dark";
-        const themeButtons = overlay.querySelectorAll(".theme-btn");
-        themeButtons.forEach(btn => {
-            if (btn.dataset.theme === currentTheme) {
-                btn.classList.add("active");
-            }
-        });
+        // Set active theme button based on current theme
+        const currentTheme = document.documentElement.dataset.theme || document.body.dataset.theme || "dark";
+        updateActiveThemeButtons(currentTheme);
         
         // Fetch category levels
         fetch("/api/me/progress", { credentials: "same-origin" })
@@ -334,25 +360,15 @@
         });
     }
 
-    // Theme switching with event delegation
+    // Theme switching with event delegation (robust - works even with dynamic modals)
     document.addEventListener("click", function(e) {
-        if (e.target.matches(".theme-btn")) {
-            const newTheme = e.target.dataset.theme;
-            
-            // Update data attribute
-            document.body.dataset.theme = newTheme;
-            
-            // Save to localStorage
-            localStorage.setItem("codeguru_theme", newTheme);
-            
-            // Update active state on all theme buttons
-            const allThemeButtons = document.querySelectorAll(".theme-btn");
-            allThemeButtons.forEach(btn => {
-                btn.classList.toggle("active", btn.dataset.theme === newTheme);
-            });
-            
-            console.log("[THEME] Switched to:", newTheme);
-        }
+        const btn = e.target.closest(".theme-btn");
+        if (!btn) return;
+        
+        const theme = btn.dataset.theme;
+        if (!theme) return;
+        
+        applyTheme(theme);
     });
 
     // Check URL parameters for level up

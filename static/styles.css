@@ -26,8 +26,10 @@
     --modal-overlay: rgba(0, 0, 0, 0.85);
 }
 
-/* Light Theme */
-body[data-theme="light"] {
+/* Light Theme - target both html and body for maximum compatibility */
+html[data-theme="light"],
+body[data-theme="light"],
+html[data-theme="light"] body {
     --bg: #f5f5f5;
     --bg-page: #ffffff;
     --panel: #ffffff;
@@ -51,22 +53,30 @@ body[data-theme="light"] {
 }
 
 /* Light theme adjustments for specific elements */
+html[data-theme="light"] .profile-modal,
 body[data-theme="light"] .profile-modal,
+html[data-theme="light"] .congrats-modal,
 body[data-theme="light"] .congrats-modal {
     background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
     border-color: var(--green);
     box-shadow: 0 20px 60px rgba(0, 204, 85, 0.2);
 }
 
+html[data-theme="light"] .profile-overlay,
 body[data-theme="light"] .profile-overlay,
+html[data-theme="light"] .congrats-overlay,
 body[data-theme="light"] .congrats-overlay {
     background: var(--modal-overlay);
 }
 
 /* Keep code editor and terminal dark in light mode for readability */
+html[data-theme="light"] .challenge-editor-textarea,
 body[data-theme="light"] .challenge-editor-textarea,
+html[data-theme="light"] .terminal-output,
 body[data-theme="light"] .terminal-output,
+html[data-theme="light"] pre,
 body[data-theme="light"] pre,
+html[data-theme="light"] code,
 body[data-theme="light"] code {
     background: #1e1e1e !important;
     color: #cccccc !important;
@@ -245,6 +255,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
+html[data-theme="light"] .auth-card,
 body[data-theme="light"] .auth-card {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -368,6 +379,7 @@ body[data-theme="light"] .auth-card {
     overflow: visible;
 }
 
+html[data-theme="light"] .nav,
 body[data-theme="light"] .nav {
     background: rgba(255, 255, 255, 0.95);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -722,6 +734,7 @@ body[data-theme="light"] .nav {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
+html[data-theme="light"] .dashboard-card,
 body[data-theme="light"] .dashboard-card {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
@@ -1544,10 +1557,12 @@ body[data-theme="light"] .dashboard-card {
     box-shadow: 0 0 10px rgba(0, 255, 102, 0.3);
 }
 
+html[data-theme="light"] .theme-btn:hover,
 body[data-theme="light"] .theme-btn:hover {
     background: rgba(0, 0, 0, 0.05);
 }
 
+html[data-theme="light"] .theme-btn.active,
 body[data-theme="light"] .theme-btn.active {
     background: rgba(0, 204, 85, 0.15);
     color: var(--green);
