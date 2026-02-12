@@ -432,13 +432,24 @@ def daily_challenge(
                 challenge = challenge_r.json()
         print(f"[WEB] category='{category_normalized}' selection={selection.get('reason')} cid={challenge_id_from_category}", flush=True)
 
+    # Get comprehensive flow state using canonical helper
+    flow_state = None
+    if main_category or (challenge and challenge.get("main_category")):
+        from app.auth.category_level import get_challenge_flow_state
+        flow_cat = main_category or challenge.get("main_category")
+        flow_state = get_challenge_flow_state(db, user.id, flow_cat)
+        print(f"[FLOW] user={user.id} cat='{flow_cat}' lvl={flow_state['current_level']} "
+              f"ft={flow_state['fast_track_enabled']} daily_assigned={len(flow_state['daily_assigned_ids_today'])} "
+              f"daily_completed={flow_state['daily_completed_today']} selected={flow_state['next_unsolved_challenge_id']} "
+              f"reason={flow_state['reason']}", flush=True)
+    
     today_completed = False
     previous_code = None
     challenge_already_solved = False
     progress_info = None
-
-    # Daily cap reached for this category?
-    if selection_reason == "DAILY_CAP_REACHED":
+    
+    # Determine if daily is complete (normal mode only)
+    if flow_state and not flow_state["fast_track_enabled"] and flow_state["daily_completed_today"]:
         today_completed = True
 
     # Check if this is a pool challenge (Learn More) or daily challenge
@@ -534,6 +545,7 @@ def daily_challenge(
             "user": user,
             "main_categories": main_categories,
             "selected_category": main_category,
+            "flow_state": flow_state,  # NEW: pass complete flow state to template
         },
     )
 

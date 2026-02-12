@@ -371,6 +371,74 @@ def get_next_challenge_for_category(
 
 
 # ---------------------------------------------------------------------------
+# CANONICAL UI FLOW STATE (for consistent challenge rendering)
+# ---------------------------------------------------------------------------
+
+def get_challenge_flow_state(db: Session, user_id: int, main_category: str) -> dict:
+    """
+    Canonical helper for UI challenge flow.
+    Returns complete state for rendering /challenge page correctly.
+    
+    Returns dict with:
+        fast_track_enabled: bool
+        current_level: int
+        required_solves_for_level: int (== current_level)
+        solved_current_level_count: int
+        daily_assigned_ids_today: list[int]
+        daily_completed_today: bool  # True if ALL assigned are solved
+        next_unsolved_challenge_id: int|None
+        reason: str|None  # e.g. "DAILY_COMPLETE", "NO_QUESTIONS_AT_LEVEL", etc.
+        message: str  # User-facing message
+    """
+    from app.submissions.models import Submission
+    
+    cat = main_category.strip()
+    progress = get_or_create_progress(db, user_id, cat)
+    ft = bool(progress.fast_track_enabled)
+    level = progress.level
+    solved_count = progress.solved_current_level_count
+    
+    today = date.today()
+    
+    # Get next challenge selection using existing logic
+    selection = get_next_challenge_for_category(db, user_id, cat)
+    next_challenge_id = selection.get("challenge_id")
+    reason = selection.get("reason")
+    message = selection.get("message", "")
+    
+    # Get daily assignments for today
+    daily_assigned = get_daily_assignments(db, user_id, cat, today)
+    
+    # Check if daily is complete: ALL assigned challenges are solved
+    daily_completed_today = False
+    if not ft and daily_assigned:
+        # Check if ALL assigned challenges have correct submissions
+        solved_assigned = set(
+            r[0] for r in
+            db.query(distinct(Submission.challenge_id))
+            .filter(
+                Submission.user_id == user_id,
+                Submission.is_correct == 1,
+                Submission.challenge_id.in_(daily_assigned),
+            )
+            .all()
+        )
+        daily_completed_today = len(solved_assigned) == len(daily_assigned)
+    
+    return {
+        "fast_track_enabled": ft,
+        "current_level": level,
+        "required_solves_for_level": level,  # Need N solves at level N
+        "solved_current_level_count": solved_count,
+        "daily_assigned_ids_today": daily_assigned,
+        "daily_completed_today": daily_completed_today,
+        "next_unsolved_challenge_id": next_challenge_id,
+        "reason": reason,
+        "message": message,
+    }
+
+
+# ---------------------------------------------------------------------------
 # AGGREGATE helpers (for dashboard / profile)
 # ---------------------------------------------------------------------------
 

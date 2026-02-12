@@ -304,25 +304,55 @@
             {% endif %}
 
             {% if today_completed and not edit_mode %}
-
+                {# DAILY COMPLETE PANEL - User has solved all daily assignments #}
                 <div style="background: #1e1e1e; border: 1px solid #3e3e3e; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
-                    <h3 style="color: #00ff66; margin-bottom: 10px;">✅ Today's challenges completed</h3>
+                    <h3 style="color: #00ff66; margin-bottom: 10px;">✅ Daily Complete</h3>
                     <p style="color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-                        You've completed your daily challenges.<br>
+                        You've already solved the challenge for today.<br>
                         Come back tomorrow or enable Fast Track to keep going!
                     </p>
 
-                    <div class="challenge-actions">
-                        <a href="/journey" class="challenge-btn">📜 Journey</a>
-                    </div>
-
-                    <div style="background: #1a1400; color: #ffd166; border: 1px solid #332800; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 13px; word-wrap: break-word;">
+                    <div style="background: #1a1400; color: #ffd166; border: 1px solid #332800; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; word-wrap: break-word;">
                         ⚡ <strong>Learn More</strong> enables permanent Fast Track — no daily limit, keep learning!
                     </div>
 
-                    <div class="challenge-actions" style="margin-top: 15px;">
-                        <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
-                            ⚡ Learn More (Fast Track)
+                    <div class="challenge-actions" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                        <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn" style="background: linear-gradient(135deg, #ffd84d, #ffaa00); color: #000; font-weight: 700; box-shadow: 0 4px 12px rgba(255, 216, 77, 0.4);">
+                            ⚡ Learn More (Enable Fast Track)
+                        </a>
+                        <a href="/challenge" class="challenge-btn secondary" style="background: rgba(136, 136, 136, 0.2); color: #888; border: 1px solid rgba(136, 136, 136, 0.4);">
+                            ← Back to Categories
+                        </a>
+                    </div>
+                </div>
+
+            {% elif flow_state and flow_state.reason == "NO_QUESTIONS_AT_LEVEL" and not edit_mode %}
+                {# NO QUESTIONS PANEL - Admin needs to add more #}
+                <div style="background: #1e1e1e; border: 1px solid #3e3e3e; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
+                    <h3 style="color: #ffd84d; margin-bottom: 10px;">⏳ No Questions Available</h3>
+                    <p style="color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                        Wait for Admin/Owner to add more questions at this level.
+                    </p>
+
+                    <div class="challenge-actions">
+                        <a href="/challenge" class="challenge-btn secondary" style="background: rgba(136, 136, 136, 0.2); color: #888; border: 1px solid rgba(136, 136, 136, 0.4);">
+                            ← Back to Categories
+                        </a>
+                    </div>
+                </div>
+
+            {% elif flow_state and flow_state.reason == "ALL_SOLVED_AT_LEVEL" and not edit_mode %}
+                {# ALL SOLVED PANEL - User completed all available at this level #}
+                <div style="background: #1e1e1e; border: 1px solid #3e3e3e; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
+                    <h3 style="color: #00ff66; margin-bottom: 10px;">🎯 All Questions Solved!</h3>
+                    <p style="color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                        You've solved all available questions at this level.<br>
+                        Wait for Admin/Owner to add more or try another category!
+                    </p>
+
+                    <div class="challenge-actions">
+                        <a href="/challenge" class="challenge-btn secondary" style="background: rgba(136, 136, 136, 0.2); color: #888; border: 1px solid rgba(136, 136, 136, 0.4);">
+                            ← Back to Categories
                         </a>
                     </div>
                 </div>
