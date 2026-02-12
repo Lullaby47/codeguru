@@ -78,12 +78,21 @@
 {% if not show_category_selector %}
 <a href="/challenge" class="category-back-btn">← Back to Category Selection</a>
 <div class="challenge-main-container">
-    <div class="challenge-editor-box">
+    <div class="challenge-editor-box" style="position: relative;">
         {% if challenge and challenge.id %}
         <input type="hidden" id="challengeIdData" data-challenge-id="{{ challenge.id }}">
         {% endif %}
 
         {% if challenge %}
+
+            {% if challenge_already_solved and is_pool_challenge and not edit_mode %}
+            <a href="/force-learning{% if challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" 
+               style="position: absolute; top: 10px; right: 10px; padding: 10px 20px; background: linear-gradient(135deg, #4488ff, #3366cc); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(68, 136, 255, 0.3); transition: all 0.2s ease; z-index: 100; display: inline-flex; align-items: center; gap: 8px;"
+               onmouseover="this.style.background='linear-gradient(135deg, #5599ff, #4477dd)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(68, 136, 255, 0.4)'"
+               onmouseout="this.style.background='linear-gradient(135deg, #4488ff, #3366cc)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(68, 136, 255, 0.3)'">
+                🚀 Next Level
+            </a>
+            {% endif %}
 
             {% if challenge.main_category or challenge.sub_category %}
             <div style="margin-bottom: 12px; font-size: 12px; color: #888; word-wrap: break-word;">
@@ -190,12 +199,9 @@
                         ⚡ <strong>Learn More</strong> enables permanent Fast Track — no daily limit, keep learning!
                     </div>
 
-                    <div class="challenge-actions" style="margin-top: 15px; display: flex; gap: 12px; flex-wrap: wrap;">
+                    <div class="challenge-actions" style="margin-top: 15px;">
                         <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
                             ⚡ Learn More (Fast Track)
-                        </a>
-                        <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
-                            🚀 Next Level
                         </a>
                     </div>
                 </div>
