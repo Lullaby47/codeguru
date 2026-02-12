@@ -149,6 +149,18 @@
         margin-top: 4px;
     }
 }
+
+/* Success Banner Animation */
+@keyframes slideInFromTop {
+    0% {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 </style>
 {% set active_category = selected_category if selected_category else (challenge.main_category if challenge and challenge.main_category else None) %}
 {% set show_category_selector = not active_category and not challenge %}
@@ -267,6 +279,21 @@
             {% elif progress_info %}
             <div class="alert alert-success" style="margin-top: 20px; margin-bottom: 20px;">
                 📊 Level {{ progress_info.level }} Progress: {{ progress_info.solved }}/{{ progress_info.required }} solved
+            </div>
+            {% endif %}
+
+            {% if request.query_params.get("correct") == "1" %}
+            <div class="alert" style="background: rgba(0, 255, 102, 0.15); border: 2px solid rgba(0, 255, 102, 0.6); color: #00ff66; margin-bottom: 20px; animation: slideInFromTop 0.4s ease-out;">
+                ✅ <strong>Correct!</strong> Great job! Keep the momentum going with this next challenge.
+                {% if request.query_params.get("prev_submission") %}
+                <a href="/submission/{{ request.query_params.get('prev_submission') }}/view" style="color: #00ff66; text-decoration: underline; margin-left: 8px;">View previous submission</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if success_message is defined and success_message %}
+            <div class="alert" style="background: rgba(0, 255, 102, 0.15); border: 2px solid rgba(0, 255, 102, 0.6); color: #00ff66; margin-bottom: 20px;">
+                {{ success_message }}
             </div>
             {% endif %}
 

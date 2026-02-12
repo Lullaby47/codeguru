@@ -600,6 +600,73 @@ def submit_challenge_ui(
                     url=f"/submission/{submission_id}/view?fresh=true&level_up=true&new_level={new_level}&old_level={old_level}{_cat_param}",
                     status_code=303,
                 )
+            
+            # Correct but NOT level up - get next challenge from same category/level
+            try:
+                # Get the current challenge to know its category
+                _ch_r = requests.get(f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies)
+                if _ch_r.status_code == 200:
+                    current_challenge = _ch_r.json()
+                    challenge_category = current_challenge.get('main_category')
+                    
+                    if challenge_category:
+                        # Get next unsolved challenge from same category
+                        from app.auth.category_level import get_next_challenge_for_category
+                        next_selection = get_next_challenge_for_category(db, user.id, challenge_category)
+                        next_challenge_id = next_selection.get("challenge_id")
+                        
+                        if next_challenge_id:
+                            # Found next challenge - redirect to it with correct flag
+                            print(f"[SUBMIT] Correct answer, loading next challenge {next_challenge_id} from same category", flush=True)
+                            return RedirectResponse(
+                                url=f"/challenge?challenge_id={next_challenge_id}&correct=1&prev_submission={submission_id}",
+                                status_code=303
+                            )
+                        else:
+                            # No more challenges available at this level
+                            reason = next_selection.get("reason", "")
+                            if reason == "DAILY_CAP_REACHED":
+                                # Daily limit reached - show message
+                                message = "✅ Correct! You've completed today's challenges. Come back tomorrow or enable Fast Track!"
+                            elif reason == "ALL_SOLVED_AT_LEVEL":
+                                # All challenges solved at this level
+                                message = "✅ Correct! You've solved all available questions at this level. Wait for more to be added or try another category!"
+                            else:
+                                # No questions at level
+                                message = "✅ Correct! Wait for Admin/Owner to add more questions at this level."
+                            
+                            print(f"[SUBMIT] No next challenge available: {reason}", flush=True)
+                            # Show success message on current challenge page
+                            from app.auth.category_level import build_ui_progress_context
+                            _ui_ctx_success = build_ui_progress_context(db, user.id, challenge_category)
+                            return templates.TemplateResponse(
+                                "challenge.html",
+                                {
+                                    "request": request,
+                                    "challenge": current_challenge,
+                                    "user": user,
+                                    "success_message": message,
+                                    "today_completed": reason == "DAILY_CAP_REACHED",
+                                    "selected_category": challenge_category,
+                                    "ui_ctx": _ui_ctx_success,
+                                    "main_categories": [
+                                        row[0] for row in db.query(distinct(Challenge.main_category))
+                                        .filter(
+                                            Challenge.main_category.isnot(None), Challenge.main_category != "",
+                                            or_(Challenge.is_active.is_(True), Challenge.is_active.is_(None)),
+                                        )
+                                        .order_by(Challenge.main_category)
+                                        .all()
+                                        if row[0] and str(row[0]).strip()
+                                    ],
+                                },
+                            )
+            except Exception as e:
+                print(f"[SUBMIT ERROR] Failed to get next challenge: {e}", flush=True)
+                # Fallback to old behavior
+                return RedirectResponse(url=f"/submission/{submission_id}/view?fresh=true", status_code=303)
+            
+            # Fallback if no category
             return RedirectResponse(url=f"/submission/{submission_id}/view?fresh=true", status_code=303)
         else:
             challenge_r = requests.get(
