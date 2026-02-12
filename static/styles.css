@@ -3,17 +3,74 @@
    ============================================ */
 
 :root {
+    /* Dark Theme (Default) */
     --bg: #1e1e1e;
+    --bg-page: #0a0a0a;
+    --panel: #0f0f0f;
+    --panel2: #1a1a1a;
     --border: #3e3e3e;
+    --border-light: #2a2a2a;
     --muted: #999;
+    --text: #cccccc;
+    --text-bright: #ffffff;
+    --text-dim: #888;
     --green: #00ff66;
     --yellow: #ffd84d;
     --card-bg: #252526;
-    --text: #cccccc;
     --error-bg: #842029;
     --error-text: #ffb3b3;
     --success-bg: rgba(0, 255, 102, 0.1);
     --success-text: #00ff66;
+    --nav-bg: #1e1e1e;
+    --modal-bg: #1e1e1e;
+    --modal-overlay: rgba(0, 0, 0, 0.85);
+}
+
+/* Light Theme */
+body[data-theme="light"] {
+    --bg: #f5f5f5;
+    --bg-page: #ffffff;
+    --panel: #ffffff;
+    --panel2: #f8f8f8;
+    --border: #d0d0d0;
+    --border-light: #e5e5e5;
+    --muted: #666;
+    --text: #2d2d2d;
+    --text-bright: #000000;
+    --text-dim: #666;
+    --green: #00cc55;
+    --yellow: #cc9900;
+    --card-bg: #fafafa;
+    --error-bg: #fdd;
+    --error-text: #c00;
+    --success-bg: rgba(0, 204, 85, 0.1);
+    --success-text: #00aa44;
+    --nav-bg: #ffffff;
+    --modal-bg: #ffffff;
+    --modal-overlay: rgba(0, 0, 0, 0.5);
+}
+
+/* Light theme adjustments for specific elements */
+body[data-theme="light"] .profile-modal,
+body[data-theme="light"] .congrats-modal {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+    border-color: var(--green);
+    box-shadow: 0 20px 60px rgba(0, 204, 85, 0.2);
+}
+
+body[data-theme="light"] .profile-overlay,
+body[data-theme="light"] .congrats-overlay {
+    background: var(--modal-overlay);
+}
+
+/* Keep code editor and terminal dark in light mode for readability */
+body[data-theme="light"] .challenge-editor-textarea,
+body[data-theme="light"] .terminal-output,
+body[data-theme="light"] pre,
+body[data-theme="light"] code {
+    background: #1e1e1e !important;
+    color: #cccccc !important;
+    border-color: #3e3e3e !important;
 }
 
 /* ============================================
@@ -181,11 +238,15 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 .auth-card {
     width: 100%;
     max-width: 400px;
-    background: rgba(15, 15, 15, 0.95);
-    border: 1px solid #222;
+    background: var(--panel);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 32px 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="light"] .auth-card {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .auth-title {
@@ -296,7 +357,7 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     left: 0;
     right: 0;
     height: 56px;
-    background: rgba(30, 30, 30, 0.95);
+    background: var(--nav-bg);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -305,6 +366,11 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     z-index: 1000;
     gap: 4px;
     overflow: visible;
+}
+
+body[data-theme="light"] .nav {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .nav-left {
@@ -649,11 +715,15 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 .dashboard-card {
-    background: #2a2a2a;
-    border: 1px solid #3a3a3a;
+    background: var(--panel);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 32px 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="light"] .dashboard-card {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .dashboard-welcome {
@@ -1422,6 +1492,66 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
     font-size: 28px;
     font-weight: bold;
     color: var(--green);
+}
+
+/* Profile Theme Toggle */
+.profile-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.profile-row-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.theme-toggle {
+    display: flex;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+}
+
+.theme-btn {
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--text-dim);
+    border: 0;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.theme-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.theme-btn.active {
+    background: rgba(0, 255, 102, 0.15);
+    color: var(--green);
+    box-shadow: 0 0 10px rgba(0, 255, 102, 0.3);
+}
+
+body[data-theme="light"] .theme-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+body[data-theme="light"] .theme-btn.active {
+    background: rgba(0, 204, 85, 0.15);
+    color: var(--green);
+    box-shadow: 0 0 8px rgba(0, 204, 85, 0.2);
 }
 
 .congrats-modal h1 {

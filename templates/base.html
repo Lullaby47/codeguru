@@ -126,6 +126,12 @@
 </div>
 
 <script>
+    // Apply saved theme immediately (before any content renders)
+    (function() {
+        const savedTheme = localStorage.getItem("codeguru_theme") || "dark";
+        document.body.dataset.theme = savedTheme;
+    })();
+
     const quotes = [
         "Small progress is still progress.",
         "You are not behind. You are building.",
@@ -186,6 +192,13 @@
         overlay.innerHTML = `
             <div class="profile-modal" onclick="event.stopPropagation()">
                 <h2>${username}</h2>
+                <div class="profile-row">
+                    <div class="profile-row-label">Theme</div>
+                    <div class="theme-toggle" role="group">
+                        <button class="theme-btn" data-theme="dark">🌙 Dark</button>
+                        <button class="theme-btn" data-theme="light">☀️ Light</button>
+                    </div>
+                </div>
                 <div class="profile-stats">
                     <div class="profile-stat profile-stat-levels">
                         <div class="profile-stat-label">Category Levels</div>
@@ -217,6 +230,15 @@
         `;
         
         document.body.appendChild(overlay);
+        
+        // Set active theme button
+        const currentTheme = document.body.dataset.theme || "dark";
+        const themeButtons = overlay.querySelectorAll(".theme-btn");
+        themeButtons.forEach(btn => {
+            if (btn.dataset.theme === currentTheme) {
+                btn.classList.add("active");
+            }
+        });
         
         // Fetch category levels
         fetch("/api/me/progress", { credentials: "same-origin" })
@@ -311,6 +333,27 @@
             alert('Failed to toggle Fast Track. Please try again.');
         });
     }
+
+    // Theme switching with event delegation
+    document.addEventListener("click", function(e) {
+        if (e.target.matches(".theme-btn")) {
+            const newTheme = e.target.dataset.theme;
+            
+            // Update data attribute
+            document.body.dataset.theme = newTheme;
+            
+            // Save to localStorage
+            localStorage.setItem("codeguru_theme", newTheme);
+            
+            // Update active state on all theme buttons
+            const allThemeButtons = document.querySelectorAll(".theme-btn");
+            allThemeButtons.forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.theme === newTheme);
+            });
+            
+            console.log("[THEME] Switched to:", newTheme);
+        }
+    });
 
     // Check URL parameters for level up
     (function() {
