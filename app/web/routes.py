@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form, Query
+from fastapi import APIRouter, Request, Depends, Form, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import requests
@@ -19,6 +19,19 @@ from app.core.config import MAIN_ADMIN_USER_ID
 from app.db.session import get_db, SessionLocal
 from app.challenges.models import Challenge
 from app.submissions.models import Submission, SubmissionInsight
+
+
+def _is_production() -> bool:
+    """
+    Detect if we're running in production (Railway, Heroku, etc).
+    Railway sets RAILWAY_ENVIRONMENT, other platforms set other vars.
+    """
+    return bool(
+        os.getenv("RAILWAY_ENVIRONMENT") or
+        os.getenv("RAILWAY_PROJECT_ID") or
+        os.getenv("ENVIRONMENT", "").lower() == "production" or
+        os.getenv("HEROKU_APP_NAME")
+    )
 
 
 def _api_base(request: Request) -> str:
@@ -222,7 +235,8 @@ def login_submit(
     response = RedirectResponse(url="/dashboard", status_code=303)
 
     # Cookie security: httpOnly always; secure in production; samesite lax
-    secure_cookie = os.getenv("ENVIRONMENT", "").lower() == "production"
+    secure_cookie = _is_production()
+    print(f"[AUTH DEBUG] Setting access_token cookie: secure={secure_cookie} (is_production={_is_production()})", flush=True)
 
     # ✅ Most FastAPI auth deps expect "Bearer <token>"
     response.set_cookie(
@@ -231,6 +245,7 @@ def login_submit(
         httponly=True,
         secure=secure_cookie,
         samesite="lax",
+        path="/",
     )
     return response
 
@@ -824,12 +839,20 @@ def submission_view(request: Request, submission_id: int, user: User = Depends(g
 @router.get("/logout", response_class=HTMLResponse)
 def logout_confirm(
     request: Request,
-    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Show logout confirmation page.
     User must click "Yes" to actually log out.
+    If not authenticated, redirect to login.
     """
+    # Try to get current user, but don't fail if not authenticated
+    try:
+        user = get_current_user(request, db)
+    except HTTPException:
+        # User not authenticated, redirect to login
+        return RedirectResponse(url="/login", status_code=303)
+    
     return templates.TemplateResponse(
         "logout_confirm.html",
         {
@@ -848,16 +871,14 @@ def logout_perform(request: Request):
     Perform the actual logout by deleting the access token cookie.
     """
     # Cookie security: must match the same settings used when setting the cookie
-    secure_cookie = os.getenv("ENVIRONMENT", "").lower() == "production"
+    secure_cookie = _is_production()
     
     response = RedirectResponse(url="/login", status_code=303)
     
     # Delete the cookie with the same settings used when setting it
     response.delete_cookie(
         key="access_token",
-        httponly=True,
-        secure=secure_cookie,
-        samesite="lax",
+        path="/",
     )
     
     return response

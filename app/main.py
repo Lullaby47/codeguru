@@ -4,6 +4,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.web.debug_routes import router as debug_router
 
 from app.db.base import Base, engine
@@ -19,6 +21,30 @@ from app.api.routes import router as api_router
 
 
 app = FastAPI(title="CodeGuru", version="0.1.0")
+
+
+# ============================================================
+# MIDDLEWARE: Proxy Headers for Railway/Heroku HTTPS detection
+# ============================================================
+class ProxyHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to handle X-Forwarded-* headers from Railway/Heroku/etc.
+    This ensures FastAPI sees the original HTTPS scheme, not HTTP.
+    """
+    async def dispatch(self, request, call_next):
+        # Railway and most proxies set X-Forwarded-Proto
+        forwarded_proto = request.headers.get("x-forwarded-proto")
+        if forwarded_proto:
+            # Override the request scheme so secure cookies work
+            request.scope["scheme"] = forwarded_proto
+        
+        response = await call_next(request)
+        return response
+
+# Add proxy middleware for production (Railway, Heroku, etc.)
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID") or os.getenv("HEROKU_APP_NAME"):
+    app.add_middleware(ProxyHeadersMiddleware)
+    print("[APP] ProxyHeadersMiddleware enabled for production", flush=True)
 
 # Mount static files directory
 static_dir = Path(__file__).parent.parent / "static"
@@ -103,6 +129,13 @@ try:
             print("[DB] Added users.last_active", flush=True)
 except Exception as e:
     print("[DB] users.last_active migration:", repr(e), flush=True)
+
+# Log environment detection for debugging
+print("[APP] Environment detection:", flush=True)
+print(f"  RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT', 'not set')}", flush=True)
+print(f"  RAILWAY_PROJECT_ID: {os.getenv('RAILWAY_PROJECT_ID', 'not set')}", flush=True)
+print(f"  ENVIRONMENT: {os.getenv('ENVIRONMENT', 'not set')}", flush=True)
+print(f"  HEROKU_APP_NAME: {os.getenv('HEROKU_APP_NAME', 'not set')}", flush=True)
 
 # Log OpenAI status once at startup (unified client)
 try:

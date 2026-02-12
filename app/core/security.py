@@ -38,9 +38,16 @@ def verify_password(password: str, stored: str) -> bool:
 # JWT
 # ======================
 
-SECRET_KEY = os.getenv("SECRET_KEY", "")
+SECRET_KEY = os.getenv("SECRET_KEY", os.getenv("JWT_SECRET_KEY", ""))
 if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY env var is required")
+    # In production, require a secret; for local dev, use a default (UNSAFE for prod)
+    if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT", "").lower() == "production":
+        raise RuntimeError("SECRET_KEY or JWT_SECRET_KEY env var is required in production")
+    SECRET_KEY = "dev-secret-key-CHANGE-IN-PRODUCTION-12345678901234567890"
+    print("[AUTH] WARNING: Using default SECRET_KEY for development. DO NOT USE IN PRODUCTION!", flush=True)
+else:
+    print(f"[AUTH] SECRET_KEY present: True (length={len(SECRET_KEY)})", flush=True)
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
@@ -57,5 +64,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def decode_access_token(token: str):
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        print("[AUTH DEBUG] Token expired", flush=True)
+        return None
+    except JWTError as e:
+        print(f"[AUTH DEBUG] JWT decode error: {type(e).__name__}", flush=True)
         return None
