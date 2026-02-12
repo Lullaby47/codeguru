@@ -92,6 +92,18 @@ try:
 except Exception as e:
     print("[DB] Optional is_active migration:", repr(e), flush=True)
 
+# Ensure users.last_active exists (online status tracking for admin)
+try:
+    if "users" in _inspector.get_table_names():
+        _user_cols = [c["name"] for c in _inspector.get_columns("users")]
+        if "last_active" not in _user_cols:
+            with engine.connect() as _conn:
+                _conn.execute(_text("ALTER TABLE users ADD COLUMN last_active TIMESTAMP"))
+                _conn.commit()
+            print("[DB] Added users.last_active", flush=True)
+except Exception as e:
+    print("[DB] users.last_active migration:", repr(e), flush=True)
+
 # Log OpenAI status once at startup (unified client)
 try:
     from app.ai.openai_client import log_startup as _ai_log_startup

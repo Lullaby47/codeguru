@@ -1139,6 +1139,54 @@ p, div, span, h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
+   ONLINE STATUS INDICATORS
+   ============================================ */
+.online-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.online-status.online {
+    background: rgba(0, 255, 102, 0.12);
+    color: #00ff66;
+    border: 1px solid rgba(0, 255, 102, 0.3);
+}
+
+.online-status.offline {
+    background: rgba(136, 136, 136, 0.12);
+    color: #888;
+    border: 1px solid rgba(136, 136, 136, 0.3);
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.online-dot {
+    background: #00ff66;
+    box-shadow: 0 0 6px rgba(0, 255, 102, 0.6);
+    animation: pulse-online 2s ease-in-out infinite;
+}
+
+.offline-dot {
+    background: #666;
+}
+
+@keyframes pulse-online {
+    0%, 100% { box-shadow: 0 0 4px rgba(0, 255, 102, 0.4); }
+    50% { box-shadow: 0 0 10px rgba(0, 255, 102, 0.8); }
+}
+
+/* ============================================
    BUTTONS
    ============================================ */
 .action-btn {

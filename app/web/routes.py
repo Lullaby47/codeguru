@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 import requests
 import os
 
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from urllib.parse import unquote, quote
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, or_
@@ -1208,12 +1208,25 @@ def admin_users_page(
     """Main admin-only user management page."""
     users = db.query(User).order_by(User.id.asc()).all()
 
+    # A user is considered "online" if active within the last 5 minutes
+    online_threshold = datetime.now(timezone.utc) - timedelta(minutes=5)
+
     users_data = []
     for u in users:
         cat_levels = get_all_user_category_levels_as_list(db, u.id, include_all_categories=False)
         levels_summary = ", ".join(f"{c['main_category']}: {c['level']}" for c in cat_levels[:5]) if cat_levels else "—"
         if len(cat_levels) > 5:
             levels_summary += f" (+{len(cat_levels) - 5} more)"
+
+        # Determine online status
+        is_online = False
+        if u.last_active:
+            last_active_utc = u.last_active
+            # Ensure timezone-aware comparison
+            if last_active_utc.tzinfo is None:
+                last_active_utc = last_active_utc.replace(tzinfo=timezone.utc)
+            is_online = last_active_utc >= online_threshold
+
         users_data.append({
             "id": u.id,
             "username": u.username,
@@ -1221,6 +1234,8 @@ def admin_users_page(
             "category_levels": levels_summary,
             "role": u.role,
             "is_main_admin": u.id == MAIN_ADMIN_USER_ID,
+            "is_online": is_online,
+            "last_active": u.last_active,
         })
 
     no_users_message = None

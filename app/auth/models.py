@@ -31,3 +31,6 @@ class User(Base):
     role = Column(String, default="user", nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Track when user was last active (updated on every authenticated request)
+    last_active = Column(DateTime(timezone=True), nullable=True)

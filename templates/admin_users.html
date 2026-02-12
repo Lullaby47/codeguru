@@ -8,6 +8,12 @@
     <div class="admin-header">
         <h1 class="admin-title">👥 User Management</h1>
         <div class="admin-sub">Manage user roles and permissions</div>
+        {% set online_count = users | selectattr('is_online') | list | length %}
+        <div style="margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 255, 102, 0.08); border: 1px solid rgba(0, 255, 102, 0.25); border-radius: 8px; padding: 8px 16px;">
+            <span class="status-dot online-dot"></span>
+            <span style="color: #00ff66; font-weight: 600; font-size: 14px;">{{ online_count }} user{{ 's' if online_count != 1 else '' }} online</span>
+            <span style="color: #888; font-size: 12px; margin-left: 4px;">out of {{ users | length }} total</span>
+        </div>
     </div>
 
     {% if request.query_params.get("success") %}
@@ -34,6 +40,7 @@
             <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Status</th>
                     <th>Username</th>
                     <th>Email</th>
                     <th>Category Levels</th>
@@ -45,6 +52,17 @@
                 {% for u in users %}
                 <tr>
                     <td>{{ u.id }}</td>
+                    <td>
+                        {% if u.is_online %}
+                            <span class="online-status online" title="Online now">
+                                <span class="status-dot online-dot"></span> Online
+                            </span>
+                        {% else %}
+                            <span class="online-status offline" title="{{ 'Last seen: ' ~ u.last_active.strftime('%b %d, %H:%M UTC') if u.last_active else 'Never logged in' }}">
+                                <span class="status-dot offline-dot"></span> Offline
+                            </span>
+                        {% endif %}
+                    </td>
                     <td>{{ u.username }}</td>
                     <td>{{ u.email }}</td>
                     <td>{{ u.category_levels }}</td>

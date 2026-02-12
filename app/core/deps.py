@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import Request, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -29,6 +31,13 @@ def get_current_user(
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+
+    # Update last_active timestamp so admins can see who is online
+    try:
+        user.last_active = datetime.now(timezone.utc)
+        db.commit()
+    except Exception:
+        db.rollback()
 
     return user
 
