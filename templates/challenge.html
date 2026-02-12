@@ -53,6 +53,102 @@
     border-radius: 6px;
     transition: width 0.3s;
 }
+
+/* Level Panel with Next Level Button Integration */
+.level-panel {
+    background: #0f0f0f;
+    border: 1px solid #1f1f1f;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.level-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.level-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    min-width: 200px;
+}
+
+.level-title {
+    color: #00ff66;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.level-stats {
+    font-size: 12px;
+    color: #888;
+}
+
+.next-level-btn {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #4488ff, #3366cc);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(68, 136, 255, 0.3);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    border: none;
+    cursor: pointer;
+}
+
+.next-level-btn:hover {
+    background: linear-gradient(135deg, #5599ff, #4477dd);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(68, 136, 255, 0.4);
+}
+
+.progress-bar-container {
+    background: #1a1a1a;
+    border-radius: 6px;
+    height: 10px;
+    overflow: hidden;
+    border: 1px solid #2a2a2a;
+    margin-bottom: 8px;
+}
+
+.level-bottom-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+    .level-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .level-info {
+        width: 100%;
+    }
+    
+    .next-level-btn {
+        width: 100%;
+        justify-content: center;
+        margin-top: 4px;
+    }
+}
 </style>
 {% set active_category = selected_category if selected_category else (challenge.main_category if challenge and challenge.main_category else None) %}
 {% set show_category_selector = not active_category and not challenge %}
@@ -78,21 +174,12 @@
 {% if not show_category_selector %}
 <a href="/challenge" class="category-back-btn">← Back to Category Selection</a>
 <div class="challenge-main-container">
-    <div class="challenge-editor-box" style="position: relative;">
+    <div class="challenge-editor-box">
         {% if challenge and challenge.id %}
         <input type="hidden" id="challengeIdData" data-challenge-id="{{ challenge.id }}">
         {% endif %}
 
         {% if challenge %}
-
-            {% if challenge_already_solved and is_pool_challenge and not edit_mode %}
-            <a href="/force-learning{% if challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" 
-               style="position: absolute; top: 10px; right: 10px; padding: 10px 20px; background: linear-gradient(135deg, #4488ff, #3366cc); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(68, 136, 255, 0.3); transition: all 0.2s ease; z-index: 100; display: inline-flex; align-items: center; gap: 8px;"
-               onmouseover="this.style.background='linear-gradient(135deg, #5599ff, #4477dd)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(68, 136, 255, 0.4)'"
-               onmouseout="this.style.background='linear-gradient(135deg, #4488ff, #3366cc)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(68, 136, 255, 0.3)'">
-                🚀 Next Level
-            </a>
-            {% endif %}
 
             {% if challenge.main_category or challenge.sub_category %}
             <div style="margin-bottom: 12px; font-size: 12px; color: #888; word-wrap: break-word;">
@@ -142,20 +229,27 @@
 
             {% if ui_ctx and ui_ctx.current %}
             {% set cur = ui_ctx.current %}
-            <div style="background: #0f0f0f; border: 1px solid #1f1f1f; border-radius: 10px; padding: 14px 16px; margin-top: 20px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="color: #00ff66; font-weight: 600; font-size: 13px;">Level {{ cur.level }}</span>
-                    <span style="font-size: 12px; color: #888;">{{ cur.solved }}/{{ cur.required }} to level up</span>
+            <div class="level-panel">
+                <div class="level-header">
+                    <div class="level-info">
+                        <span class="level-title">Level {{ cur.level }}</span>
+                        <span class="level-stats">{{ cur.solved }}/{{ cur.required }} to level up</span>
+                    </div>
+                    {% if challenge_already_solved and is_pool_challenge and not edit_mode %}
+                    <a href="/force-learning{% if challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="next-level-btn">
+                        🚀 Next Level
+                    </a>
+                    {% endif %}
                 </div>
                 <!-- Progress bar (F1) -->
                 {% set pct = ((cur.solved / cur.required) * 100)|int if cur.required > 0 else 0 %}
-                <div style="background: #1a1a1a; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #2a2a2a;">
+                <div class="progress-bar-container">
                     <div class="cg-progress-fill" data-pct="{{ pct }}"></div>
                 </div>
                 <script>
                 (function(){var el=document.querySelector('.cg-progress-fill[data-pct]');if(el)el.style.width=el.getAttribute('data-pct')+'%';})();
                 </script>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px;">
+                <div class="level-bottom-info">
                     <!-- Fast Track badge (F5) -->
                     {% if cur.fast_track %}
                     <span style="color: #ffd84d;">🚀 Fast Track ON</span>
