@@ -180,17 +180,22 @@
             console.error("[THEME] load failed:", e);
         }
 
-        // Event delegation: works even if modal is injected later
+        // CRITICAL: Use CAPTURE phase (third param = true) to intercept BEFORE modal's stopPropagation
         document.addEventListener("click", (e) => {
             const btn = e.target.closest(".theme-btn");
             if (!btn) return;
+            
             const theme = btn.dataset.theme;
             if (!theme) return;
+            
+            // Stop modal close handler from stealing this click
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
+            
             console.log("[THEME] button clicked:", theme);
             window.applyTheme(theme);
-        });
+        }, true); // <-- CAPTURE PHASE = true
 
         console.log("[THEME] system initialized");
     })();
