@@ -188,6 +188,24 @@ def enable_fast_track(db: Session, user_id: int, main_category: str) -> UserCate
     return progress
 
 
+def disable_fast_track(db: Session, user_id: int, main_category: str) -> UserCategoryProgress:
+    """Disable fast track for user+category, returning to normal daily mode."""
+    progress = get_or_create_progress(db, user_id, main_category)
+    progress.fast_track_enabled = False
+    db.commit()
+    db.refresh(progress)
+    print(f"[FAST-TRACK] disabled user={user_id} cat='{main_category}'", flush=True)
+    return progress
+
+
+def toggle_fast_track(db: Session, user_id: int, main_category: str, enabled: bool) -> UserCategoryProgress:
+    """Toggle fast track on/off for user+category."""
+    if enabled:
+        return enable_fast_track(db, user_id, main_category)
+    else:
+        return disable_fast_track(db, user_id, main_category)
+
+
 # ---------------------------------------------------------------------------
 # DAILY ASSIGNMENT  (Rule D)
 # ---------------------------------------------------------------------------

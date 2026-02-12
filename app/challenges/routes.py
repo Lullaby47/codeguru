@@ -1490,6 +1490,29 @@ def activate_fast_track(
     return {"ok": True, "fast_track_enabled": True, "main_category": main_category.strip(), "level": progress.level}
 
 
+@router.post("/fast-track/toggle")
+def toggle_fast_track_endpoint(
+    main_category: str = Form(...),
+    enabled: bool = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Toggle fast-track on/off for user+category."""
+    from app.auth.category_level import toggle_fast_track
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    progress = toggle_fast_track(db, user.id, main_category.strip(), enabled)
+    
+    return {
+        "ok": True,
+        "fast_track_enabled": progress.fast_track_enabled,
+        "main_category": main_category.strip(),
+        "level": progress.level,
+        "message": "Fast Track enabled" if enabled else "Switched to Daily Mode"
+    }
+
+
 # ======================================================
 # ADMIN – CREATE CHALLENGE
 # ======================================================

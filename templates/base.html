@@ -230,16 +230,20 @@
                 } else {
                     container.innerHTML = levels.map(item => {
                         const pct = item.required > 0 ? Math.round((item.solved / item.required) * 100) : 0;
-                        const ftBadge = item.fast_track ? '<span style="color:#ffd84d;font-size:11px;" title="Fast Track">🚀</span> ' : '';
-                        return `<div class="profile-level-item" style="margin-bottom:8px;">
+                        const ftBadge = item.fast_track ? '<span style="color:#ffd84d;font-size:11px;" title="Fast Track">🚀 FT</span>' : '<span style="color:#888;font-size:11px;" title="Daily Mode">📅</span>';
+                        const toggleBtn = item.fast_track 
+                            ? `<button onclick="toggleFastTrack('${item.main_category}', false)" style="padding:4px 10px;font-size:10px;background:rgba(255,100,100,0.2);color:#ff6666;border:1px solid rgba(255,100,100,0.4);border-radius:4px;cursor:pointer;margin-top:4px;">🛑 Disable Fast Track</button>`
+                            : `<button onclick="toggleFastTrack('${item.main_category}', true)" style="padding:4px 10px;font-size:10px;background:rgba(255,216,77,0.2);color:#ffd84d;border:1px solid rgba(255,216,77,0.4);border-radius:4px;cursor:pointer;margin-top:4px;">🚀 Enable Fast Track</button>`;
+                        return `<div class="profile-level-item" style="margin-bottom:12px;background:#0f0f0f;border:1px solid #1f1f1f;border-radius:6px;padding:10px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;">
                                 <span class="profile-level-category">${item.main_category}</span>
-                                <span class="profile-level-value">${ftBadge}Level ${item.level}</span>
+                                <span class="profile-level-value">${ftBadge} Level ${item.level}</span>
                             </div>
-                            <div style="background:#1a1a1a;border-radius:4px;height:5px;margin-top:3px;overflow:hidden;">
+                            <div style="background:#1a1a1a;border-radius:4px;height:5px;margin-top:4px;overflow:hidden;">
                                 <div style="height:100%;width:${pct}%;background:#00ff66;border-radius:4px;"></div>
                             </div>
                             <div style="font-size:10px;color:#666;margin-top:2px;">${item.solved}/${item.required} to next level</div>
+                            ${toggleBtn}
                         </div>`;
                     }).join("");
                 }
@@ -283,6 +287,29 @@
         document.body.appendChild(toast);
         toast.addEventListener("click", () => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); });
         setTimeout(() => { if (toast.parentNode) { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); } }, 5000);
+    }
+
+    // Toggle Fast Track mode
+    function toggleFastTrack(category, enabled) {
+        const formData = new FormData();
+        formData.append('main_category', category);
+        formData.append('enabled', enabled);
+        
+        fetch('/challenge/fast-track/toggle', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => {
+            console.log('[FAST-TRACK] Toggle successful:', data);
+            // Reload page to reflect new state
+            window.location.reload();
+        })
+        .catch(err => {
+            console.error('[FAST-TRACK] Toggle failed:', err);
+            alert('Failed to toggle Fast Track. Please try again.');
+        });
     }
 
     // Check URL parameters for level up

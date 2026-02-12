@@ -263,18 +263,34 @@
                 </script>
                 <div class="level-bottom-info">
                     <!-- Fast Track badge (F5) -->
-                    {% if cur.fast_track %}
-                    <span style="color: #ffd84d;">🚀 Fast Track ON</span>
-                    {% else %}
-                    <!-- Daily limit indicator (F6) -->
-                    <span style="color: #888;">Daily: {{ cur.daily_used }}/{{ cur.daily_cap }} used today</span>
-                    {% endif %}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        {% if cur.fast_track %}
+                        <span style="color: #ffd84d;">🚀 Fast Track ON</span>
+                        {% else %}
+                        <!-- Daily limit indicator (F6) -->
+                        <span style="color: #888;">📅 Daily: {{ cur.daily_used }}/{{ cur.daily_cap }} used today</span>
+                        {% endif %}
+                    </div>
                     {% if cur.remaining > 0 %}
                     <span style="color: #666;">{{ cur.remaining }} more to go</span>
                     {% else %}
                     <span style="color: #00ff66;">Ready to level up!</span>
                     {% endif %}
                 </div>
+                <!-- Fast Track Toggle Button -->
+                {% if selected_category %}
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #2a2a2a;">
+                    {% if cur.fast_track %}
+                    <button onclick="toggleFastTrack('{{ selected_category }}', false); return false;" style="width: 100%; padding: 8px 12px; font-size: 12px; background: rgba(255, 100, 100, 0.15); color: #ff6666; border: 1px solid rgba(255, 100, 100, 0.4); border-radius: 6px; cursor: pointer; transition: all 0.2s ease; font-weight: 600;">
+                        🛑 Disable Fast Track (Return to Daily Mode)
+                    </button>
+                    {% else %}
+                    <button onclick="toggleFastTrack('{{ selected_category }}', true); return false;" style="width: 100%; padding: 8px 12px; font-size: 12px; background: rgba(255, 216, 77, 0.15); color: #ffd84d; border: 1px solid rgba(255, 216, 77, 0.4); border-radius: 6px; cursor: pointer; transition: all 0.2s ease; font-weight: 600;">
+                        🚀 Enable Fast Track (Unlimited Challenges)
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
             {% elif progress_info %}
             <div class="alert alert-success" style="margin-top: 20px; margin-bottom: 20px;">
