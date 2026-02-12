@@ -142,26 +142,58 @@
 </div>
 
 <script>
-    // Theme helper functions (defined early for use in event handlers)
-    function applyTheme(theme) {
-        // Update data attribute on both html and body for maximum compatibility
-        document.documentElement.dataset.theme = theme;
-        document.body.dataset.theme = theme;
-        
-        // Save to localStorage
-        localStorage.setItem("codeguru_theme", theme);
-        
-        // Update active state on all theme buttons
-        updateActiveThemeButtons(theme);
-        
-        console.log("[THEME] set", theme);
-    }
+    // ========================================
+    // THEME SYSTEM - Global functions with IIFE initialization
+    // ========================================
+    window.applyTheme = function(theme) {
+        try {
+            const t = (theme === "light") ? "light" : "dark";
+            document.documentElement.dataset.theme = t;
+            document.body.dataset.theme = t;
+            localStorage.setItem("codeguru_theme", t);
+            window.updateThemeButtons(t);
+            console.log("[THEME] applied:", t);
+        } catch (e) {
+            console.warn("[THEME] apply failed", e);
+        }
+    };
 
-    function updateActiveThemeButtons(theme) {
-        document.querySelectorAll(".theme-btn").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.theme === theme);
+    window.updateThemeButtons = function(theme) {
+        document.querySelectorAll(".theme-btn").forEach((b) => {
+            const isActive = (b.dataset.theme === theme);
+            b.classList.toggle("active", isActive);
+            b.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
-    }
+    };
+
+    // Initialize theme system
+    (function() {
+        // Apply saved theme ASAP on load
+        try {
+            const saved = localStorage.getItem("codeguru_theme") || "dark";
+            document.documentElement.dataset.theme = saved;
+            document.addEventListener("DOMContentLoaded", () => {
+                document.body.dataset.theme = saved;
+                window.updateThemeButtons(saved);
+            });
+        } catch (e) {
+            console.error("[THEME] load failed:", e);
+        }
+
+        // Event delegation: works even if modal is injected later
+        document.addEventListener("click", (e) => {
+            const btn = e.target.closest(".theme-btn");
+            if (!btn) return;
+            const theme = btn.dataset.theme;
+            if (!theme) return;
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("[THEME] button clicked:", theme);
+            window.applyTheme(theme);
+        });
+
+        console.log("[THEME] system initialized");
+    })();
 
     const quotes = [
         "Small progress is still progress.",
@@ -264,7 +296,7 @@
         
         // Set active theme button based on current theme
         const currentTheme = document.documentElement.dataset.theme || document.body.dataset.theme || "dark";
-        updateActiveThemeButtons(currentTheme);
+        window.updateThemeButtons(currentTheme);
         
         // Fetch category levels
         fetch("/api/me/progress", { credentials: "same-origin" })
@@ -359,17 +391,6 @@
             alert('Failed to toggle Fast Track. Please try again.');
         });
     }
-
-    // Theme switching with event delegation (robust - works even with dynamic modals)
-    document.addEventListener("click", function(e) {
-        const btn = e.target.closest(".theme-btn");
-        if (!btn) return;
-        
-        const theme = btn.dataset.theme;
-        if (!theme) return;
-        
-        applyTheme(theme);
-    });
 
     // Check URL parameters for level up
     (function() {

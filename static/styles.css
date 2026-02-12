@@ -62,6 +62,12 @@ body[data-theme="light"] .congrats-modal {
     box-shadow: 0 20px 60px rgba(0, 204, 85, 0.2);
 }
 
+/* TESTING: Make light theme super obvious */
+html[data-theme="light"] body,
+body[data-theme="light"] {
+    outline: 3px solid red !important;
+}
+
 html[data-theme="light"] .profile-overlay,
 body[data-theme="light"] .profile-overlay,
 html[data-theme="light"] .congrats-overlay,
