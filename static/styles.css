@@ -2023,3 +2023,124 @@ body.modal-open {
     outline: 2px solid var(--green);
     outline-offset: 2px;
 }
+
+/* ============================================
+   LIGHT THEME - TIGHT OVERRIDES (NO GUESSING)
+   ============================================ */
+html[data-theme="light"] body,
+body[data-theme="light"] {
+  background: var(--bg-page);
+  color: var(--text);
+}
+
+/* Dashboard: fix hardcoded dark tiles */
+html[data-theme="light"] .dashboard-sub,
+body[data-theme="light"] .dashboard-sub {
+  color: var(--muted) !important;
+}
+
+html[data-theme="light"] .dashboard-card-item,
+body[data-theme="light"] .dashboard-card-item {
+  background: var(--panel2) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .dashboard-card-label,
+body[data-theme="light"] .dashboard-card-label {
+  color: var(--text-dim) !important;
+}
+
+html[data-theme="light"] .dashboard-card-value,
+body[data-theme="light"] .dashboard-card-value {
+  color: var(--text) !important;
+}
+
+/* Dashboard category level rows: keep green but readable in light */
+html[data-theme="light"] .dashboard-level-item,
+body[data-theme="light"] .dashboard-level-item {
+  background: rgba(11, 191, 99, 0.10) !important;
+  border: 1px solid rgba(11, 191, 99, 0.25) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .dashboard-level-value,
+body[data-theme="light"] .dashboard-level-value {
+  color: var(--text) !important;
+  font-weight: 700;
+}
+
+/* CTA button: match light theme style (not pure white box) */
+html[data-theme="light"] .dashboard-cta,
+body[data-theme="light"] .dashboard-cta {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10) !important;
+}
+
+html[data-theme="light"] .dashboard-cta:hover,
+body[data-theme="light"] .dashboard-cta:hover {
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14) !important;
+}
+
+/* Journey panels are hardcoded dark — fix */
+html[data-theme="light"] .journey-left-panel,
+html[data-theme="light"] .journey-middle-panel,
+html[data-theme="light"] .journey-right-panel,
+body[data-theme="light"] .journey-left-panel,
+body[data-theme="light"] .journey-middle-panel,
+body[data-theme="light"] .journey-right-panel {
+  background: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* Challenge surface panels: use light panels */
+html[data-theme="light"] .challenge-editor-box,
+html[data-theme="light"] .challenge-terminal-panel,
+html[data-theme="light"] .challenge-attempts-box,
+body[data-theme="light"] .challenge-editor-box,
+body[data-theme="light"] .challenge-terminal-panel,
+body[data-theme="light"] .challenge-attempts-box {
+  background: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* Challenge solution panel should not be dark in light theme */
+html[data-theme="light"] .challenge-solution-panel,
+body[data-theme="light"] .challenge-solution-panel {
+  background: var(--panel2) !important;
+  border: 1px solid rgba(255, 68, 68, 0.35) !important;
+  box-shadow: 0 6px 16px rgba(255, 68, 68, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Terminal header divider: make border readable in light theme */
+html[data-theme="light"] .challenge-terminal-header,
+body[data-theme="light"] .challenge-terminal-header {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Profile cards: keep green accents but readable */
+html[data-theme="light"] .profile-stat,
+body[data-theme="light"] .profile-stat {
+  background: rgba(11, 191, 99, 0.10) !important;
+  border: 1px solid rgba(11, 191, 99, 0.22) !important;
+}
+
+html[data-theme="light"] .profile-stat-label,
+body[data-theme="light"] .profile-stat-label {
+  color: var(--text-dim) !important;
+}
+
+html[data-theme="light"] .profile-level-item,
+body[data-theme="light"] .profile-level-item {
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .profile-level-value,
+body[data-theme="light"] .profile-level-value {
+  color: var(--text) !important;
+  font-weight: 700;
+}
