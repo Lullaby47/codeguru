@@ -2211,3 +2211,293 @@ html[data-theme="light"] .users-table tr:hover,
 body[data-theme="light"] .users-table tr:hover {
   background: rgba(15, 23, 42, 0.04) !important;
 }
+
+/* ============================================
+   LIGHT THEME - COMPREHENSIVE PAGE COVERAGE
+   ============================================ */
+
+/* Admin challenge pages: forms and containers */
+html[data-theme="light"] .admin-form-container,
+body[data-theme="light"] .admin-form-container,
+html[data-theme="light"] .admin-form-box,
+body[data-theme="light"] .admin-form-box,
+html[data-theme="light"] .admin-header,
+body[data-theme="light"] .admin-header {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Admin challenge list cards */
+html[data-theme="light"] .challenge-item,
+body[data-theme="light"] .challenge-item,
+html[data-theme="light"] .challenge-card,
+body[data-theme="light"] .challenge-card {
+  background: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .challenge-item:hover,
+body[data-theme="light"] .challenge-item:hover {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Submission view page */
+html[data-theme="light"] .submission-container,
+body[data-theme="light"] .submission-container,
+html[data-theme="light"] .submission-header,
+body[data-theme="light"] .submission-header,
+html[data-theme="light"] .submission-details,
+body[data-theme="light"] .submission-details {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Submission code box stays dark */
+html[data-theme="light"] .submission-code,
+body[data-theme="light"] .submission-code,
+html[data-theme="light"] .submission-solution,
+body[data-theme="light"] .submission-solution {
+  background: #0f172a !important;
+  color: #e5e7eb !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Journey - ensure ALL journey elements are light */
+html[data-theme="light"] .journey-container,
+body[data-theme="light"] .journey-container,
+html[data-theme="light"] .journey-header,
+body[data-theme="light"] .journey-header,
+html[data-theme="light"] .journey-section,
+body[data-theme="light"] .journey-section {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .journey-challenge-card,
+body[data-theme="light"] .journey-challenge-card,
+html[data-theme="light"] .journey-item,
+body[data-theme="light"] .journey-item {
+  background: var(--panel2) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .journey-challenge-title,
+body[data-theme="light"] .journey-challenge-title,
+html[data-theme="light"] .journey-challenge-desc,
+body[data-theme="light"] .journey-challenge-desc {
+  color: var(--text) !important;
+}
+
+/* Challenge page - additional elements */
+html[data-theme="light"] .challenge-container,
+body[data-theme="light"] .challenge-container,
+html[data-theme="light"] .challenge-header,
+body[data-theme="light"] .challenge-header,
+html[data-theme="light"] .challenge-info,
+body[data-theme="light"] .challenge-info {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .challenge-title,
+body[data-theme="light"] .challenge-title,
+html[data-theme="light"] .challenge-description,
+body[data-theme="light"] .challenge-description {
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .challenge-section-title,
+body[data-theme="light"] .challenge-section-title {
+  color: var(--text) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+/* Level panel */
+html[data-theme="light"] .level-panel,
+body[data-theme="light"] .level-panel {
+  background: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .level-title,
+body[data-theme="light"] .level-title,
+html[data-theme="light"] .level-stats,
+body[data-theme="light"] .level-stats {
+  color: var(--text) !important;
+}
+
+/* Buttons in light mode */
+html[data-theme="light"] .challenge-btn,
+body[data-theme="light"] .challenge-btn,
+html[data-theme="light"] .btn,
+body[data-theme="light"] .btn,
+html[data-theme="light"] button:not(.theme-btn),
+body[data-theme="light"] button:not(.theme-btn) {
+  background: var(--panel2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+html[data-theme="light"] .challenge-btn.primary,
+body[data-theme="light"] .challenge-btn.primary,
+html[data-theme="light"] .btn.primary,
+body[data-theme="light"] .btn.primary {
+  background: var(--green) !important;
+  color: #ffffff !important;
+  border-color: var(--green) !important;
+}
+
+html[data-theme="light"] .challenge-btn:hover,
+body[data-theme="light"] .challenge-btn:hover,
+html[data-theme="light"] .btn:hover,
+body[data-theme="light"] .btn:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Forms and inputs */
+html[data-theme="light"] input[type="text"],
+body[data-theme="light"] input[type="text"],
+html[data-theme="light"] input[type="password"],
+body[data-theme="light"] input[type="password"],
+html[data-theme="light"] input[type="email"],
+body[data-theme="light"] input[type="email"],
+html[data-theme="light"] input[type="number"],
+body[data-theme="light"] input[type="number"],
+html[data-theme="light"] select,
+body[data-theme="light"] select {
+  background: var(--panel2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+html[data-theme="light"] input::placeholder,
+body[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder,
+body[data-theme="light"] textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+/* Alert/message boxes */
+html[data-theme="light"] .alert,
+body[data-theme="light"] .alert,
+html[data-theme="light"] .message,
+body[data-theme="light"] .message {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+html[data-theme="light"] .alert.success,
+body[data-theme="light"] .alert.success,
+html[data-theme="light"] .message.success,
+body[data-theme="light"] .message.success {
+  background: var(--success-bg) !important;
+  color: var(--success-text) !important;
+  border-color: var(--green) !important;
+}
+
+html[data-theme="light"] .alert.error,
+body[data-theme="light"] .alert.error,
+html[data-theme="light"] .message.error,
+body[data-theme="light"] .message.error {
+  background: var(--error-bg) !important;
+  color: var(--error-text) !important;
+  border-color: var(--error-text) !important;
+}
+
+/* Nav items visibility in light mode */
+html[data-theme="light"] .nav-item,
+body[data-theme="light"] .nav-item {
+  color: var(--text) !important;
+  opacity: 0.8;
+}
+
+html[data-theme="light"] .nav-item:hover,
+body[data-theme="light"] .nav-item:hover {
+  opacity: 1;
+}
+
+html[data-theme="light"] .nav-quote,
+body[data-theme="light"] .nav-quote {
+  color: var(--muted) !important;
+}
+
+/* Progress bars */
+html[data-theme="light"] .progress-bar-container,
+body[data-theme="light"] .progress-bar-container {
+  background: var(--panel2) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="light"] .progress-bar-fill,
+body[data-theme="light"] .progress-bar-fill {
+  background: var(--green) !important;
+}
+
+/* Tags and labels */
+html[data-theme="light"] .tag,
+body[data-theme="light"] .tag,
+html[data-theme="light"] .label,
+body[data-theme="light"] .label,
+html[data-theme="light"] .badge,
+body[data-theme="light"] .badge {
+  background: var(--panel2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Links */
+html[data-theme="light"] a,
+body[data-theme="light"] a {
+  color: var(--green) !important;
+}
+
+html[data-theme="light"] a:hover,
+body[data-theme="light"] a:hover {
+  opacity: 0.8;
+}
+
+/* Dividers */
+html[data-theme="light"] hr,
+body[data-theme="light"] hr {
+  border-color: var(--border) !important;
+}
+
+/* Scrollbars in light mode */
+html[data-theme="light"] ::-webkit-scrollbar-track,
+body[data-theme="light"] ::-webkit-scrollbar-track {
+  background: var(--panel2) !important;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb,
+body[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--muted) !important;
+  border-color: var(--panel2) !important;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover,
+body[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim) !important;
+}
+
+/* Ensure no remaining dark backgrounds (catch-all) */
+html[data-theme="light"] .card,
+body[data-theme="light"] .card,
+html[data-theme="light"] .panel,
+body[data-theme="light"] .panel,
+html[data-theme="light"] .box,
+body[data-theme="light"] .box,
+html[data-theme="light"] .container,
+body[data-theme="light"] .container,
+html[data-theme="light"] .wrapper,
+body[data-theme="light"] .wrapper,
+html[data-theme="light"] .section,
+body[data-theme="light"] .section {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+}

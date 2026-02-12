@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>{% block title %}CodeGuru{% endblock %}</title>
     
-    {# Apply saved theme IMMEDIATELY before any rendering #}
+    {# Apply saved theme IMMEDIATELY before any rendering (runs before CSS) #}
     <script>
     (() => {
         try {
             const saved = localStorage.getItem("codeguru_theme") || "dark";
             document.documentElement.dataset.theme = saved;
+            document.documentElement.style.colorScheme = saved; // Match form controls
             document.addEventListener("DOMContentLoaded", () => {
                 document.body.dataset.theme = saved;
             });
@@ -150,9 +151,10 @@
             const t = (theme === "light") ? "light" : "dark";
             document.documentElement.dataset.theme = t;
             document.body.dataset.theme = t;
+            document.documentElement.style.colorScheme = t; // Match form controls
             localStorage.setItem("codeguru_theme", t);
             window.updateThemeButtons(t);
-            console.log("[THEME] applied:", t);
+            console.log("[THEME] set to", t);
         } catch (e) {
             console.warn("[THEME] apply failed", e);
         }
