@@ -30,10 +30,10 @@
 html[data-theme="light"],
 body[data-theme="light"],
 html[data-theme="light"] body {
-    --bg: #eef2f7;        /* soft gray-blue */
-    --bg-page: #eef2f7;
-    --panel: #f9fbfd;     /* card background */
-    --panel2: #f1f5f9;    /* secondary panels */
+    --bg: #e9eef4;        /* soft light grey background */
+    --bg-page: #e9eef4;   /* soft light grey page */
+    --panel: #f3f6fa;     /* card background */
+    --panel2: #edf2f7;    /* secondary panels */
     --border: rgba(15, 23, 42, 0.12);
     --border-light: rgba(15, 23, 42, 0.08);
     --muted: #475569;     /* muted text */
@@ -42,13 +42,13 @@ html[data-theme="light"] body {
     --text-dim: #64748b;
     --green: #0bbf63;     /* keep brand green */
     --yellow: #cc9900;
-    --card-bg: #f9fbfd;
+    --card-bg: #f3f6fa;
     --error-bg: #fee2e2;
     --error-text: #991b1b;
     --success-bg: rgba(11, 191, 99, 0.1);
     --success-text: #0bbf63;
-    --nav-bg: #f9fbfd;
-    --modal-bg: #f9fbfd;
+    --nav-bg: #f3f6fa;
+    --modal-bg: #f3f6fa;
     --modal-overlay: rgba(15, 23, 42, 0.5);
     --accent: #0bbf63;
     --accentSoft: rgba(11, 191, 99, 0.18);
@@ -2143,4 +2143,71 @@ html[data-theme="light"] .profile-level-value,
 body[data-theme="light"] .profile-level-value {
   color: var(--text) !important;
   font-weight: 700;
+}
+
+/* ============================================
+   LIGHT THEME - SOFT GREY BACKGROUND (NO WHITE)
+   ============================================ */
+
+/* Light theme global page background (force) */
+html[data-theme="light"],
+html[data-theme="light"] body,
+body[data-theme="light"] {
+  background: var(--bg-page) !important;
+}
+
+/* Light theme main containers should not look white */
+html[data-theme="light"] .page,
+body[data-theme="light"] .page,
+html[data-theme="light"] .dashboard-wrap,
+body[data-theme="light"] .dashboard-wrap,
+html[data-theme="light"] .admin-container,
+body[data-theme="light"] .admin-container {
+  background: transparent !important;
+}
+
+/* Nav bar: avoid pure white */
+html[data-theme="light"] .nav,
+body[data-theme="light"] .nav {
+  background: rgba(243, 246, 250, 0.96) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Mobile title row should also match */
+html[data-theme="light"] .nav-title-mobile,
+body[data-theme="light"] .nav-title-mobile {
+  background: rgba(243, 246, 250, 0.96) !important;
+}
+
+/* Admin table wrapper: make table sit on light panels not on white */
+html[data-theme="light"] .table-wrapper,
+body[data-theme="light"] .table-wrapper {
+  background: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Users table header currently looks too black; soften it for light theme */
+html[data-theme="light"] .users-table th,
+body[data-theme="light"] .users-table th {
+  background: #e2e8f0 !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Users table rows should be light panels */
+html[data-theme="light"] .users-table,
+body[data-theme="light"] .users-table {
+  background: var(--panel) !important;
+}
+
+html[data-theme="light"] .users-table td,
+body[data-theme="light"] .users-table td {
+  border-bottom: 1px solid var(--border-light) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .users-table tr:hover,
+body[data-theme="light"] .users-table tr:hover {
+  background: rgba(15, 23, 42, 0.04) !important;
 }
