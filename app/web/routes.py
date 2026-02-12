@@ -369,7 +369,46 @@ def daily_challenge(
     # Only show challenge if challenge_id is provided OR main_category is selected
     # Don't show challenge by default - user must select a category first
     if challenge_id:
-        # If challenge_id is provided (from force-learning), get that specific challenge
+        # If challenge_id is provided, first check if it's already solved
+        # If solved, redirect to get a new unsolved challenge from the same category
+        already_solved_check = (
+            db.query(Submission)
+            .filter(
+                Submission.user_id == user.id,
+                Submission.challenge_id == challenge_id,
+                Submission.is_correct == 1,
+            )
+            .first()
+        )
+        
+        if already_solved_check and not edit:
+            # Challenge already solved - get a new one from the same category
+            print(f"[CHALLENGE] Challenge {challenge_id} already solved, fetching new one", flush=True)
+            challenge_r = requests.get(
+                f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
+            )
+            if challenge_r.status_code == 200:
+                temp_challenge = challenge_r.json()
+                temp_category = temp_challenge.get('main_category')
+                if temp_category:
+                    # Get next unsolved challenge from same category
+                    from app.auth.category_level import get_next_challenge_for_category
+                    next_selection = get_next_challenge_for_category(db, user.id, temp_category)
+                    next_challenge_id = next_selection.get("challenge_id")
+                    if next_challenge_id:
+                        # Redirect to new challenge
+                        return RedirectResponse(
+                            url=f"/challenge?challenge_id={next_challenge_id}",
+                            status_code=303
+                        )
+                    else:
+                        # No more challenges - show selection page
+                        return RedirectResponse(
+                            url=f"/challenge?main_category={temp_category}",
+                            status_code=303
+                        )
+        
+        # Challenge not solved or in edit mode - load it
         challenge_r = requests.get(
             f"{_api_base(request)}/challenge/{challenge_id}", cookies=request.cookies
         )
@@ -417,16 +456,20 @@ def daily_challenge(
         # For pool challenges (or latest attempted challenge), check if this specific challenge is already solved and calculate progress
         if is_pool_challenge:
             # Check if user has solved this specific challenge correctly
-            solved = (
-                db.query(Submission)
-                .filter(
-                    Submission.user_id == user.id,
-                    Submission.challenge_id == challenge_id,
-                    Submission.is_correct == 1,
+            # Only set this flag in edit/improve mode - normal flow should never show solved challenges
+            if edit:
+                solved = (
+                    db.query(Submission)
+                    .filter(
+                        Submission.user_id == user.id,
+                        Submission.challenge_id == challenge_id,
+                        Submission.is_correct == 1,
+                    )
+                    .first()
                 )
-                .first()
-            )
-            challenge_already_solved = solved is not None
+                challenge_already_solved = solved is not None
+            else:
+                challenge_already_solved = False
 
             # Build UI progress context (F1/F5/F6)
             from app.auth.category_level import build_ui_progress_context
@@ -480,7 +523,7 @@ def daily_challenge(
             "request": request,
             "challenge": challenge,
             "today_completed": today_completed and not edit,
-            "challenge_already_solved": challenge_already_solved if is_pool_challenge else False,
+            "challenge_already_solved": challenge_already_solved if (is_pool_challenge and edit) else False,
             "is_pool_challenge": is_pool_challenge or is_category_challenge,
             "progress_info": progress_info,
             "ui_ctx": ui_ctx,

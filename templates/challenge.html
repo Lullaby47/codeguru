@@ -297,9 +297,9 @@
             </div>
             {% endif %}
 
-            {% if challenge_already_solved and is_pool_challenge and not edit_mode %}
+            {% if challenge_already_solved and is_pool_challenge and edit_mode %}
             <div class="alert" style="background: rgba(255, 200, 0, 0.1); border: 1px solid rgba(255, 200, 0, 0.3); color: #ffc800; margin-bottom: 20px;">
-                ✅ You've already solved this challenge! Click <a href="/force-learning{% if challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" style="color: #ffc800; text-decoration: underline; font-weight: bold;">Learn More</a> to get a different one.
+                ℹ️ You've already solved this challenge. You're viewing it in <strong>Improve Mode</strong> to refine your solution.
             </div>
             {% endif %}
 
