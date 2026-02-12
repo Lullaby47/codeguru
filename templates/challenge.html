@@ -190,9 +190,12 @@
                         ⚡ <strong>Learn More</strong> enables permanent Fast Track — no daily limit, keep learning!
                     </div>
 
-                    <div class="challenge-actions" style="margin-top: 15px;">
+                    <div class="challenge-actions" style="margin-top: 15px; display: flex; gap: 12px; flex-wrap: wrap;">
                         <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
                             ⚡ Learn More (Fast Track)
+                        </a>
+                        <a href="/force-learning{% if selected_category %}?main_category={{ selected_category|urlencode }}{% elif challenge and challenge.main_category %}?main_category={{ challenge.main_category|urlencode }}{% endif %}" class="challenge-btn secondary" style="color: #ffd84d; text-shadow: 0 0 8px rgba(255, 216, 77, 0.7); box-shadow: 0 0 10px rgba(255, 216, 77, 0.5); border: 1px solid rgba(255, 216, 77, 0.7);">
+                            🚀 Next Level
                         </a>
                     </div>
                 </div>
